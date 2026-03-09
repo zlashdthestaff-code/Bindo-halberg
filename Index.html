@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kuis Master Bahasa Indonesia XII - SMK Negeri 1 Tanjungpinang</title>
+    <style>
+        :root { --primary: #2c3e50; --secondary: #c0392b; --success: #27ae60; --accent: #2980b9; --bg: #f0f2f5; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--primary); margin: 0; padding: 10px; }
+        .container { max-width: 850px; margin: 20px auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        h1 { text-align: center; border-bottom: 4px solid var(--secondary); padding-bottom: 10px; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
+        .metadata { display: flex; justify-content: space-between; font-size: 0.85em; background: #f8f9fa; padding: 10px; border-radius: 8px; margin-bottom: 20px; border-left: 5px solid var(--accent); }
+        
+        /* Study Mode Style */
+        .study-box { background: #eef7ff; border: 1px solid #b3d7ff; padding: 20px; border-radius: 10px; margin-bottom: 25px; display: none; }
+        .study-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .study-header h3 { margin: 0; color: var(--accent); }
+        
+        .question-text { font-size: 1.2em; font-weight: 600; line-height: 1.5; margin-bottom: 20px; }
+        .options { display: grid; gap: 12px; }
+        button.option { padding: 15px; border: 2px solid #e0e0e0; border-radius: 10px; background: white; cursor: pointer; text-align: left; transition: 0.3s; font-size: 1em; }
+        button.option:hover:not([disabled]) { border-color: var(--accent); background: #f0f8ff; }
+        button.option.correct { background: var(--success) !important; color: white; border-color: var(--success); }
+        button.option.wrong { background: var(--secondary) !important; color: white; border-color: var(--secondary); }
+        
+        /* Explanation Style */
+        .explanation { margin-top: 20px; padding: 15px; background: #f1f9f1; border-left: 5px solid var(--success); display: none; animation: slideDown 0.4s; }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Toggle Button Style */
+        .btn-toggle { background: #d1e7ff; border: 1px solid #a7c5eb; padding: 6px 15px; border-radius: 20px; cursor: pointer; font-size: 0.8em; font-weight: 600; color: #2980b9; transition: 0.2s; }
+        .btn-toggle:hover { background: #b3d7ff; }
+
+        .controls { margin-top: 30px; display: flex; justify-content: space-between; align-items: center; }
+        .btn { padding: 12px 25px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-next { background: var(--primary); color: white; }
+        .btn-study { background: var(--accent); color: white; }
+        
+        #result-screen { display: none; text-align: center; }
+        .score-circle { width: 150px; height: 150px; border-radius: 50%; border: 10px solid var(--success); display: flex; align-items: center; justify-content: center; font-size: 3em; font-weight: bold; margin: 20px auto; color: var(--success); }
+        .progress-bar { width: 100%; height: 10px; background: #eee; border-radius: 5px; margin-bottom: 20px; overflow: hidden; }
+        #progress-fill { height: 100%; background: var(--secondary); width: 0%; transition: 0.4s; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>UAS Bahasa Indonesia</h1>
+    <div class="metadata">
+        <span>SMKN 1 TANJUNGPINANG</span>
+        <span id="pos-info">Materi 1/40</span>
+    </div>
+
+    <div class="progress-bar"><div id="progress-fill"></div></div>
+
+    <div id="study-screen" class="study-box">
+        <div class="study-header">
+            <h3 id="study-title">Penjelasan Materi</h3>
+            <button class="btn-toggle" id="study-toggle-btn" onclick="toggleStudyContent()">Sembunyikan Materi</button>
+        </div>
+        <p id="study-content"></p>
+        <button class="btn btn-study" onclick="startQuestion()">Saya Paham, Lanjut ke Soal</button>
+    </div>
+
+    <div id="quiz-screen" style="display:none;">
+        <div class="question-text" id="q-text"></div>
+        <div class="options" id="opt-container"></div>
+        
+        <div class="explanation" id="ex-box">
+            <strong>💡 Pembahasan:</strong> <span id="ex-text"></span>
+        </div>
+
+        <div class="controls">
+            <span>Level: <b id="lvl-info"></b></span>
+            <button class="btn btn-next" id="next-btn" onclick="nextStep()" style="visibility:hidden;">Selanjutnya &raquo;</button>
+        </div>
+    </div>
+
+    <div id="result-screen">
+        <h2>Ujian Selesai!</h2>
+        <div class="score-circle" id="final-score">0</div>
+        <p id="final-comment"></p>
+        <button class="btn btn-next" onclick="location.reload()">Ulangi Ujian</button>
+    </div>
+</div>
+
+<script>
+const bankSoal = [
+    {
+        materi: "Kalimat Opini dalam Teks Editorial",
+        penjelasan: "Kalimat opini dalam teks editorial mencerminkan pandangan, prediksi, atau penilaian subjektif penulis terhadap suatu isu yang sedang hangat dibicarakan di masyarakat.",
+        soal: [
+            { 
+                q: "Bacalah teks berikut!\n\n(1) Pemerintah Kota Tanjungpinang baru saja meresmikan penggunaan transportasi umum bertenaga listrik untuk rute pusat kota. (2) Berdasarkan data dari Dinas Perhubungan, terdapat sepuluh unit bus yang akan beroperasi setiap hari mulai pukul enam pagi. (3) Langkah ini diambil sebagai bagian dari upaya pengurangan emisi karbon di wilayah perkotaan. (4) Kebijakan ini merupakan solusi yang sangat cerdas untuk mengatasi kemacetan sekaligus polusi udara yang kian menghawatirkan. (5) Masyarakat diharapkan dapat beralih dari kendaraan pribadi ke transportasi umum ini demi kenyamanan bersama.\n\nKalimat yang mengandung opini berupa penilaian subjektif penulis ditunjukkan oleh nomor...", 
+                a: "(4)", 
+                ex: "Kalimat 4 mengandung kata 'sangat cerdas' dan 'menghawatirkan' yang merupakan penilaian subjektif penulis, bukan fakta objektif.", 
+                o: ["(1)", "(2)", "(3)", "(4)", "(5)"], 
+                lvl: "L1" 
+            },
+            { 
+                q: "Bacalah teks berikut!\n\n(1) Angka kunjungan wisatawan mancanegara ke Kepulauan Riau meningkat sebesar lima belas persen pada kuartal pertama tahun ini. (2) Keberhasilan ini tidak terlepas dari banyaknya festival budaya yang diselenggarakan secara rutin di berbagai kabupaten. (3) Tampaknya, industri pariwisata kita akan segera pulih sepenuhnya dan menjadi primadona ekonomi nasional dalam waktu dekat. (4) Namun, kualitas pelayanan di beberapa titik penyeberangan masih memerlukan perbaikan secara menyeluruh. (5) Pemerintah daerah sedang menyusun regulasi baru terkait standarisasi tarif jasa wisata.\n\nKalimat opini yang menyatakan sebuah prediksi atau ramalan masa depan adalah...", 
+                a: "(3)", 
+                ex: "Kalimat 3 menggunakan kata 'tampaknya' dan 'akan segera', yang menunjukkan sebuah prediksi terhadap masa depan.", 
+                o: ["(1)", "(2)", "(3)", "(4)", "(5)"], 
+                lvl: "L1" 
+            },
+            { 
+                q: "Bacalah teks berikut!\n\n(1) Peluncuran program beasiswa pendidikan tinggi bagi siswa berprestasi telah dibuka sejak awal bulan ini. (2) Syarat utama pendaftaran adalah memiliki nilai rata-rata rapor minimal delapan puluh lima. (3) Seharusnya kuota penerima beasiswa ini ditambah agar lebih banyak siswa kurang mampu yang mendapatkan kesempatan sekolah. (4) Program ini memberikan bantuan biaya kuliah penuh hingga delapan semester. (5) Pihak panitia melakukan seleksi berkas secara ketat untuk memastikan bantuan tepat sasaran.\n\nManakah kalimat opini yang mengandung unsur saran dalam teks tersebut?", 
+                a: "(3)", 
+                ex: "Kalimat 3 mengandung kata 'seharusnya', yang menandakan adanya saran atau rekomendasi dari penulis.", 
+                o: ["(1)", "(2)", "(3)", "(4)", "(5)"], 
+                lvl: "L1" 
+            }
+        ]
+    },
+    {
+        materi: "Kata Ganti Penunjuk dalam Teks Editorial",
+        penjelasan: "Kata ganti penunjuk digunakan untuk menghindari pengulangan kata dan merujuk pada objek, tempat, atau ide yang telah dibahas sebelumnya dalam teks.",
+        soal: [
+            { 
+                q: "Bacalah teks berikut!\n\nPerkembangan teknologi kecerdasan buatan berkembang sangat pesat dalam kurun waktu dua tahun terakhir. Hal ini memicu kekhawatiran mengenai hilangnya beberapa jenis pekerjaan konvensional di masa depan. Banyak pakar menyarankan agar sistem pendidikan segera mengadopsi kurikulum yang relevan dengan kebutuhan digital.\n\nFrasa 'Hal ini' dalam teks tersebut merujuk pada...", 
+                a: "Perkembangan teknologi kecerdasan buatan yang pesat", 
+                ex: "'Hal ini' merujuk pada seluruh inti bahasan di kalimat pertama yaitu tentang pesatnya perkembangan teknologi AI.", 
+                o: ["Kurun waktu dua tahun terakhir", "Perkembangan teknologi kecerdasan buatan yang pesat", "Kekhawatiran masyarakat", "Hilangnya pekerjaan konvensional", "Sistem pendidikan digital"], 
+                lvl: "L2" 
+            },
+            { 
+                q: "Bacalah teks berikut!\n\nSiswa SMK Negeri 1 Tanjungpinang didorong untuk aktif mengikuti berbagai perlombaan kompetensi tingkat nasional. Partisipasi tersebut dianggap sangat penting untuk mengasah mental kompetitif serta memperluas jaringan profesional mereka sebelum memasuki dunia industri yang sesungguhnya.\n\nKata 'tersebut' pada kalimat kedua merujuk kepada...", 
+                a: "Partisipasi siswa dalam mengikuti berbagai perlombaan", 
+                ex: "Kata 'tersebut' merujuk kembali pada tindakan yang disebutkan di kalimat sebelumnya, yaitu mengikuti perlombaan.", 
+                o: ["Siswa SMK Negeri 1 Tanjungpinang", "Kompetensi tingkat nasional", "Mental kompetitif siswa", "Partisipasi siswa dalam mengikuti berbagai perlombaan", "Dunia industri yang sesungguhnya"], 
+                lvl: "L2" 
+            },
+            { 
+                q: "Bacalah teks berikut!\n\nFenomena perundungan di lingkungan sekolah masih sering terjadi meskipun berbagai sosialisasi pencegahan telah dilakukan. Masalah itu memerlukan perhatian serius dari seluruh pemangku kepentingan, termasuk orang tua, guru, dan masyarakat sekitar agar tercipta lingkungan belajar yang aman.\n\nKata ganti penunjuk 'itu' pada kalimat di atas digunakan untuk merujuk pada...", 
+                a: "Fenomena perundungan di lingkungan sekolah", 
+                ex: "Kata 'masalah itu' secara langsung merujuk pada isu perundungan yang baru saja dijelaskan di kalimat sebelumnya.", 
+                o: ["Lingkungan sekolah", "Sosialisasi pencegahan", "Fenomena perundungan di lingkungan sekolah", "Perhatian serius pemangku kepentingan", "Lingkungan belajar yang aman"], 
+                lvl: "L2" 
+            }
+        ]
+    },
+    {
+        materi: "Konjungsi Kausalitas dalam Teks Editorial",
+        penjelasan: "Konjungsi kausalitas berfungsi untuk menghubungkan sebab dan akibat antara dua klausa atau kalimat dalam sebuah argumen.",
+        soal: [
+            { 
+                q: "Bacalah teks berikut!\n\nBanyak saluran drainase di wilayah pemukiman warga tersumbat oleh tumpukan sampah domestik yang dibuang sembarangan. Akibatnya, wilayah tersebut selalu mengalami banjir genangan setiap kali hujan turun dengan intensitas tinggi. Masyarakat perlu segera mengubah pola hidup dan mulai mengelola sampah secara bijak.\n\nKata yang menunjukkan hubungan kausalitas (akibat) dalam teks di atas adalah...", 
+                a: "Akibatnya", 
+                ex: "Kata 'Akibatnya' menunjukkan konsekuensi atau dampak dari tersumbatnya drainase oleh sampah.", 
+                o: ["Banyak", "Tersumbat", "Akibatnya", "Setiap kali", "Secara bijak"], 
+                lvl: "L2" 
+            },
+            { 
+                q: "Bacalah teks berikut!\n\nPenggunaan pestisida kimia secara berlebihan dapat merusak kesuburan tanah dan mematikan organisme bermanfaat di dalamnya. Oleh karena itu, para petani diimbau untuk beralih menggunakan pupuk organik yang lebih ramah lingkungan demi keberlanjutan sektor pertanian di masa depan.\n\nKonjungsi kausalitas yang digunakan untuk menghubungkan kalimat pertama dan kedua adalah...", 
+                a: "Oleh karena itu", 
+                ex: "Frasa 'Oleh karena itu' menghubungkan penyebab (pestisida merusak tanah) dengan kesimpulan/saran (beralih ke pupuk organik).", 
+                o: ["Secara berlebihan", "Dan", "Oleh karena itu", "Untuk", "Demi"], 
+                lvl: "L2" 
+            },
+            { 
+                q: "Bacalah teks berikut!\n\nSiswa seringkali kesulitan memahami materi pelajaran karena metode pengajaran yang digunakan masih bersifat satu arah dan monoton. Hal ini menyebabkan motivasi belajar siswa menurun drastis sehingga hasil ujian tidak mencapai target minimal yang ditetapkan sekolah.\n\nManakah dari kata berikut yang berfungsi sebagai konjungsi kausalitas sebab?", 
+                a: "karena", 
+                ex: "Kata 'karena' digunakan untuk mengawali alasan atau penyebab dari kesulitan siswa memahami materi.", 
+                o: ["seringkali", "karena", "masih", "sehingga", "tidak"], 
+                lvl: "L2" 
+            }
+        ]
+    },
+    {
+        materi: "Kalimat Fakta dalam Teks Editorial",
+        penjelasan: "Fakta adalah kenyataan atau peristiwa yang benar-benar terjadi dan didukung oleh data atau bukti yang objektif serta dapat diverifikasi.",
+        soal: [
+            { 
+                q: "Bacalah teks berikut!\n\n(1) Kemacetan di jalur utama menuju Pelabuhan Sri Bintan Pura semakin sulit diurai pada akhir pekan. (2) Berdasarkan pantauan CCTV Dinas Perhubungan, antrean kendaraan mencapai panjang dua kilometer pada hari Sabtu sore. (3) Sepertinya petugas harus bekerja lebih keras dalam mengatur lampu lalu lintas di persimpangan. (4) Penambahan personel di titik rawan macet mungkin bisa menjadi solusi sementara. (5) Warga berharap pembangunan jalan layang segera direalisasikan tahun depan.\n\nKalimat yang menyajikan fakta objektif dalam teks tersebut adalah nomor...", 
+                a: "(2)", 
+                ex: "Kalimat 2 menyertakan data lokasi (CCTV Dishub) dan angka (dua kilometer) yang dapat dibuktikan kebenarannya.", 
+                o: ["(1)", "(2)", "(3)", "(4)", "(5)"], 
+                lvl: "L2" 
+            },
+            { 
+                q: "Bacalah teks berikut!\n\n(1) Provinsi Kepulauan Riau merupakan daerah kepulauan yang memiliki lebih dari dua ribu pulau besar dan kecil. (2) Potensi maritim di wilayah ini sungguh luar biasa jika dikelola dengan teknologi modern. (3) Nelayan tradisional sebaiknya mendapatkan bantuan peralatan navigasi yang lebih canggih. (4) Menurut data BPS, sektor perikanan menyumbang kontribusi besar terhadap pendapatan daerah tahun lalu. (5) Kita harus bangga dengan kekayaan alam yang dimiliki oleh negeri ini.\n\nManakah nomor yang menunjukkan kalimat fakta berdasarkan data instansi resmi?", 
+                a: "(1) dan (4)", 
+                ex: "Kalimat 1 menyebutkan jumlah pulau (geografis) dan kalimat 4 menyebutkan data dari BPS (data statistik).", 
+                o: ["(1) dan (2)", "(2) dan (3)", "(1) dan (4)", "(3) dan (5)", "(4) dan (5)"], 
+                lvl: "L2" 
+            },
+            { 
+                q: "Bacalah teks berikut!\n\n(1) Pertandingan final lomba debat tingkat provinsi berakhir semalam pada pukul sembilan malam. (2) Juri menetapkan tim dari SMK Negeri 1 Tanjungpinang sebagai juara pertama setelah melalui penilaian yang sangat ketat. (3) Penampilan mereka di atas panggung sangat memukau seluruh audiens yang hadir di aula. (4) Mungkin kemenangan ini akan memotivasi sekolah lain untuk meningkatkan kemampuan literasi siswanya. (5) Trofi juara diserahkan langsung oleh Kepala Dinas Pendidikan.\n\nKalimat yang mengandung opini dan bukan fakta adalah...", 
+                a: "(3) dan (4)", 
+                ex: "Kalimat 3 berisi penilaian subjektif ('memukau') dan kalimat 4 berisi spekulasi/kemungkinan ('mungkin').", 
+                o: ["(1) dan (2)", "(2) dan (5)", "(3) dan (4)", "(1) dan (5)", "(2) dan (3)"], 
+                lvl: "L2" 
+            }
+        ]
+    },
+    {
+        materi: "Kata Ganti Penunjuk Tempat dalam Teks Editorial",
+        penjelasan: "Kata ganti penunjuk tempat (pronomina lokatif) digunakan untuk menggantikan nama tempat agar alur kalimat lebih efektif, seperti 'di sini', 'di sana', dan 'di situ'.",
+        soal: [
+            { 
+                q: "Bacalah teks berikut!\n\nPemerintah pusat sedang mengembangkan kawasan ekonomi khusus di wilayah Galang, Batam. Di sana, akan dibangun berbagai pabrik manufaktur dan pusat logistik yang diprediksi mampu menyerap ribuan tenaga kerja lokal dalam waktu singkat.\n\nFrasa 'Di sana' pada teks tersebut merujuk pada tempat...", 
+                a: "Wilayah Galang, Batam", 
+                ex: "'Di sana' digunakan untuk menggantikan penyebutan lokasi 'wilayah Galang, Batam' agar tidak terjadi pengulangan.", 
+                o: ["Pemerintah pusat", "Kawasan ekonomi khusus", "Wilayah Galang, Batam", "Pabrik manufaktur", "Pusat logistik"], 
+                lvl: "L2" 
+            },
+            { 
+                q: "Bacalah teks berikut!\n\nPerpustakaan daerah yang baru saja direnovasi kini memiliki koleksi buku digital yang sangat lengkap. Para pengunjung dapat membaca dengan nyaman di sini tanpa perlu khawatir terganggu oleh kebisingan dari jalan raya di luar gedung.\n\nKata penunjuk tempat 'di sini' merujuk pada...", 
+                a: "Perpustakaan daerah", 
+                ex: "'Di sini' merujuk pada lokasi tempat aktivitas membaca dilakukan, yaitu di perpustakaan daerah.", 
+                o: ["Koleksi buku digital", "Perpustakaan daerah", "Jalan raya", "Gedung baru", "Luar gedung"], 
+                lvl: "L2" 
+            },
+            { 
+                q: "Bacalah teks berikut!\n\nStadion sepak bola utama di pusat kota akan ditutup sementara untuk perbaikan rumput lapangan. Selama proses renovasi berlangsung, para atlet akan dialihkan untuk berlatih di situ agar jadwal latihan tetap berjalan sesuai rencana.\n\nKata 'di situ' dalam teks tersebut merujuk pada tempat...", 
+                a: "Lokasi atlet dialihkan (lapangan latihan lain)", 
+                ex: "Dalam konteks kalimat, 'di situ' merujuk pada lokasi pengalihan latihan yang dimaksud penulis (lapangan alternatif).", 
+                o: ["Stadion sepak bola utama", "Pusat kota", "Rumput lapangan", "Lokasi atlet dialihkan (lapangan latihan lain)", "Jadwal latihan"], 
+                lvl: "L2" 
+            }
+        ]
+    },
+    {
+        materi: "Kata Ganti Penunjuk Waktu dalam Teks Editorial",
+        penjelasan: "Kata ganti penunjuk waktu digunakan untuk merujuk pada keterangan waktu yang sudah disebutkan sebelumnya, memperkuat kronologi dalam teks.",
+        soal: [
+            { 
+                q: "Bacalah teks berikut!\n\nUjian akhir semester dijadwalkan akan dimulai pada minggu pertama bulan Desember. Saat itu, seluruh siswa kelas dua belas diharapkan sudah menyelesaikan semua tugas praktik dan administrasi sekolah.\n\nKata ganti penunjuk waktu pada teks di atas ditunjukkan oleh frasa...", 
+                a: "Saat itu", 
+                ex: "'Saat itu' merujuk pada waktu yang telah ditentukan sebelumnya, yaitu minggu pertama bulan Desember.", 
+                o: ["Minggu pertama", "Bulan Desember", "Saat itu", "Sudah menyelesaikan", "Tugas praktik"], 
+                lvl: "L2" 
+            },
+            { 
+                q: "Bacalah teks berikut!\n\nPada masa penjajahan, para pejuang kita harus bertempur dengan senjata tradisional melawan musuh yang bersenjata modern. Kala itu, semangat persatuan menjadi kekuatan utama yang membuat rakyat mampu bertahan menghadapi tekanan dari pihak kolonial.\n\nFrasa 'Kala itu' merujuk pada periode waktu...", 
+                a: "Masa penjajahan", 
+                ex: "'Kala itu' merujuk pada waktu lampau yang sedang dibahas di kalimat pertama, yaitu masa penjajahan.", 
+                o: ["Masa penjajahan", "Senjata tradisional", "Sanjata modern", "Semangat persatuan", "Tekanan kolonial"], 
+                lvl: "L2" 
+            },
+            { 
+                q: "Bacalah teks berikut!\n\nGerhana matahari total diprediksi akan menyambangi wilayah Indonesia lima tahun mendatang. Ketika itu, para ilmuwan dari berbagai belahan dunia akan berkumpul untuk melakukan pengamatan mendalam terhadap fenomena alam yang langka tersebut.\n\nKata ganti penunjuk waktu 'Ketika itu' digunakan untuk menunjuk pada...", 
+                a: "Lima tahun mendatang", 
+                ex: "'Ketika itu' merujuk pada keterangan waktu di masa depan yang telah disebutkan, yaitu lima tahun mendatang.", 
+                o: ["Gerhana matahari total", "Wilayah Indonesia", "Lima tahun mendatang", "Ilmuwan dunia", "Fenomena alam"], 
+                lvl: "L2" 
+            }
+        ]
+    },
+    {
+        materi: "Penulisan Judul Teks Editorial",
+        penjelasan: "Penulisan judul harus mengikuti kaidah EBI/PUEBI, di mana setiap awal kata menggunakan huruf kapital, kecuali kata tugas (di, ke, dari, yang, untuk, bagi, dalam) yang terletak di tengah.",
+        soal: [
+            { 
+                q: "Manakah penulisan judul teks editorial berikut yang benar dan sesuai dengan aturan tata bahasa Indonesia?", 
+                a: "Tantangan Besar dalam Menghadapi Era Digital bagi Remaja", 
+                ex: "Kata 'dalam' dan 'bagi' adalah kata depan/kata tugas, sehingga harus ditulis dengan huruf kecil jika berada di tengah judul.", 
+                o: ["Tantangan Besar Dalam Menghadapi Era Digital Bagi Remaja", "Tantangan Besar dalam Menghadapi Era Digital bagi Remaja", "Tantangan besar dalam menghadapi era digital bagi remaja", "Tantangan Besar Dalam menghadapi era digital Bagi remaja", "TANTANGAN BESAR DALAM MENGHADAPI ERA DIGITAL BAGI REMAJA"], 
+                lvl: "L2" 
+            },
+            { 
+                q: "Penulisan judul teks editorial: 'dampak sampah plastik bagi kelangsungan hidup biota laut'. Perbaikan penulisan judul yang tepat adalah...", 
+                a: "Dampak Sampah Plastik bagi Kelangsungan Hidup Biota Laut", 
+                ex: "Setiap kata diawali huruf kapital kecuali kata tugas 'bagi' yang berada di tengah judul.", 
+                o: ["Dampak Sampah Plastik Bagi Kelangsungan Hidup Biota Laut", "Dampak Sampah Plastik bagi Kelangsungan Hidup Biota Laut", "Dampak sampah plastik bagi kelangsungan hidup biota laut", "Dampak Sampah Plastik Bagi kelangsungan hidup biota laut", "Dampak Sampah Plastik bagi Kelangsungan Hidup biota Laut"], 
+                lvl: "L2" 
+            },
+            { 
+                q: "Jika Anda ingin menulis sebuah teks editorial dengan judul: 'peran pemuda di dalam pembangunan daerah pesisir', penulisan yang paling akurat adalah...", 
+                a: "Peran Pemuda di dalam Pembangunan Daerah Pesisir", 
+                ex: "Kata 'di' dan 'dalam' merupakan kata depan/kata tugas, maka ditulis dengan huruf kecil.", 
+                o: ["Peran Pemuda Di Dalam Pembangunan Daerah Pesisir", "Peran Pemuda di Dalam Pembangunan Daerah Pesisir", "Peran Pemuda di dalam Pembangunan Daerah Pesisir", "Peran pemuda di dalam pembangunan daerah pesisir", "Peran Pemuda Di dalam Pembangunan daerah pesisir"], 
+                lvl: "L2" 
+            }
+        ]
+    },
+    {
+        materi: "Pernyataan Tidak Sesuai dengan Teks Editorial",
+        penjelasan: "Peserta didik harus mampu menganalisis keseluruhan teks untuk menemukan detail informasi yang salah, bertentangan, atau tidak disebutkan dalam wacana.",
+        soal: [
+            { 
+                q: "Bacalah teks berikut!\n\nIndustri kreatif di Indonesia berkembang sangat pesat, terutama di bidang kriya dan kuliner. Pemerintah terus berupaya memberikan bantuan permodalan melalui bank pemerintah dengan bunga yang sangat rendah. Selain itu, pameran internasional sering diadakan untuk memperkenalkan produk lokal ke luar negeri. Namun, kendala utama yang dihadapi para pengusaha adalah kurangnya tenaga kerja terampil yang memahami teknologi pemasaran modern.\n\nBerdasarkan teks di atas, manakah pernyataan yang tidak sesuai dengan isi teks?", 
+                a: "Kendala utama pengusaha adalah tingginya bunga bank pemerintah.", 
+                ex: "Teks justru menyebutkan bahwa bank pemerintah memberikan bunga yang sangat rendah, bukan tinggi.", 
+                o: ["Industri kreatif bidang kuliner berkembang pesat.", "Pemerintah memberikan bantuan modal dengan bunga rendah.", "Produk lokal diperkenalkan melalui pameran internasional.", "Kendala utama pengusaha adalah tingginya bunga bank pemerintah.", "Pengusaha membutuhkan tenaga terampil di bidang pemasaran modern."], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Bacalah teks berikut!\n\nSekolah Menengah Kejuruan (SMK) dirancang untuk mencetak lulusan yang siap bekerja di berbagai bidang industri. Siswa dibekali dengan keterampilan praktik yang lebih banyak porsinya dibandingkan dengan teori di dalam kelas. Hal ini bertujuan agar siswa memiliki kompetensi yang sesuai dengan kebutuhan pasar kerja. Meskipun demikian, lulusan SMK juga tetap memiliki peluang untuk melanjutkan pendidikan ke jenjang perguruan tinggi.\n\nPernyataan berikut yang tidak sesuai dengan isi teks adalah...", 
+                a: "Porsi teori di kelas lebih banyak daripada keterampilan praktik.", 
+                ex: "Teks menyatakan bahwa porsi praktik lebih banyak daripada teori, sehingga pernyataan pilihan ini salah.", 
+                o: ["Lulusan SMK disiapkan untuk langsung bekerja di industri.", "Siswa SMK mendapatkan bekal keterampilan praktik.", "Porsi teori di kelas lebih banyak daripada keterampilan praktik.", "Tujuan pendidikan SMK adalah memenuhi kebutuhan pasar kerja.", "Lulusan SMK diperbolehkan kuliah ke jenjang yang lebih tinggi."], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Bacalah teks berikut!\n\nHutan mangrove di pesisir pantai memiliki fungsi sangat penting sebagai penahan abrasi alami dari deburan ombak laut. Selain itu, hutan ini juga menjadi tempat berkembang biak berbagai jenis ikan dan kepiting yang menjadi sumber ekonomi warga sekitar. Sayangnya, banyak lahan mangrove yang kini beralih fungsi menjadi area pemukiman dan tambak udang tanpa izin resmi dari pemerintah.\n\nManakah pernyataan yang bertentangan dengan isi teks tersebut?", 
+                a: "Alih fungsi lahan mangrove menjadi tambak udang telah mendapatkan izin resmi.", 
+                ex: "Teks menyebutkan alih fungsi lahan terjadi 'tanpa izin resmi', sehingga pernyataan ini bertentangan.", 
+                o: ["Hutan mangrove berfungsi menahan abrasi pantai.", "Ikan dan kepiting berkembang biak di area mangrove.", "Mangrove merupakan sumber ekonomi bagi warga pesisir.", "Alih fungsi lahan mangrove menjadi tambak udang telah mendapatkan izin resmi.", "Banyak lahan mangrove yang berubah menjadi area pemukiman."], 
+                lvl: "L3" 
+            }
+        ]
+    },
+    {
+        materi: "Kesalahan Penulisan Kata dalam Teks Editorial",
+        penjelasan: "Menemukan kesalahan ejaan atau penulisan kata yang tidak baku sesuai dengan standar bahasa Indonesia yang baik dan benar (KBBI/PUEBI).",
+        soal: [
+            { 
+                q: "Bacalah teks berikut!\n\nPemerintah pusat harus segera melakukan analisa mendalam terkait penurunan produksi pangan nasional tahun ini. Tanpa langkah-langkah yang kongkrit dan sistematis, dikhawatirkan krisis pangan akan melanda seluruh wilayah negeri dalam waktu yang singkat.\n\nKesalahan penulisan kata baku pada teks di atas terletak pada kata...", 
+                a: "analisa dan kongkrit", 
+                ex: "Bentuk baku yang benar menurut KBBI adalah 'analisis' dan 'konkret'.", 
+                o: ["analisa dan kongkrit", "produksi dan pangan", "sistematis dan wilayah", "singkat dan krisis", "negeri dan langkah"], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Bacalah teks berikut!\n\nJadwal praktik dokter di rumah sakit tersebut seringkali tidak sesuai dengan sistem antrian digital yang telah diterapkan. Hal ini memicu kekecewaan pasien yang sudah datang tepat waktu namun harus menunggu lama karena alasan teknis pada perangkat komputer di loket pendaftaran.\n\nKata yang tidak baku dalam kutipan teks tersebut adalah...", 
+                a: "antrian", 
+                ex: "Kata baku untuk 'antrian' adalah 'antre', sehingga penulisannya seharusnya 'antrean'.", 
+                o: ["praktik", "antrian", "digital", "sistem", "loket"], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Bacalah teks berikut!\n\nSetiap atlit yang akan bertanding di kancah internasional wajib menjaga kondisi fisik agar tetap fith dan prima. Selain latihan fisik yang intensif, asupan gizi dan vitamin juga menjadi faktor penentu keberhasilan mereka dalam meraih medali emas bagi bangsa Indonesia.\n\nKesalahan ejaan pada kata serapan dalam teks tersebut adalah...", 
+                a: "atlit dan fith", 
+                ex: "Penulisan yang benar adalah 'atlet' dan 'fit'.", 
+                o: ["intensif", "internasional", "atlit dan fith", "vitamin", "fisik"], 
+                lvl: "L3" 
+            }
+        ]
+    },
+    {
+        materi: "Kata Bermakna Lampau (Arkais) dalam Teks Cerita Sejarah",
+        penjelasan: "Kata arkais adalah kata-kata kuno atau lama yang sering muncul dalam hikayat atau cerita sejarah dan sudah jarang digunakan dalam komunikasi modern.",
+        soal: [
+            { 
+                q: "Bacalah teks berikut!\n\nSyahdan, pada masa pemerintahan Sultan Mansyur Syah, Kerajaan Malaka mencapai puncak kejayaannya sebagai pusat perdagangan di Asia Tenggara. Banyak saudagar kaya dari berbagai belahan dunia datang untuk menukar barang dagangan mereka dengan rempah-rempah berharga yang dimiliki oleh kerajaan tersebut.\n\nKata arkais dalam penggalan cerita sejarah tersebut adalah...", 
+                a: "Syahdan", 
+                ex: "'Syahdan' merupakan kata arkais yang berfungsi sebagai kata penghubung yang berarti 'lalu' atau 'maka'.", 
+                o: ["Kerajaan", "Syahdan", "Saudagar", "Rempah-rempah", "Berharga"], 
+                lvl: "L1" 
+            },
+            { 
+                q: "Bacalah teks berikut!\n\nAlkisah, di sebuah pulau kecil yang terletak di Selat Malaka, hiduplah seorang nelayan tua yang sangat sakti. Suatu hari, ia menemukan sebuah peti kayu tua yang terombang-ambing di tepi pantai. Hatta, ketika peti tersebut dibuka, memancarlah cahaya keemasan yang menerangi seluruh penjuru pantai.\n\nKata yang menunjukkan ciri khas bahasa dalam teks sejarah/hikayat di atas adalah...", 
+                a: "Alkisah dan Hatta", 
+                ex: "Kedua kata tersebut adalah kata arkais yang sering digunakan dalam pembukaan dan transisi cerita klasik.", 
+                o: ["Nelayan dan Sakti", "Alkisah dan Hatta", "Pantai dan Peti", "Cahaya dan Keemasan", "Pulau dan Kecil"], 
+                lvl: "L1" 
+            },
+            { 
+                q: "Bacalah teks berikut!\n\nSetelah berhasil mengalahkan pasukan musuh di perbatasan, sang panglima segera menghadap baginda raja untuk melaporkan kemenangannya. Baginda merasa sangat bersukacita dan segera memerintahkan seisi istana untuk mengadakan pesta perayaan yang sangat meriah selama tujuh hari tujuh malam.\n\nKata bermakna lampau/arkais yang digunakan untuk menyapa penguasa dalam teks tersebut adalah...", 
+                a: "baginda", 
+                ex: "'Baginda' adalah kata ganti atau sapaan hormat untuk raja/penguasa dalam sastra lama.", 
+                o: ["panglima", "baginda", "menghadap", "bersukacita", "istana"], 
+                lvl: "L1" 
+            }
+        ]
+    },
+    
+    {
+        materi: "Konjungsi Temporal dalam Teks Cerita Sejarah",
+        penjelasan: "Konjungsi temporal adalah kata hubung yang menata urutan peristiwa berdasarkan waktu, sangat krusial dalam teks cerita sejarah untuk menjaga kronologi.",
+        soal: [
+            { 
+                q: "Bacalah teks berikut!\n\nPerjuangan mempertahankan kemerdekaan di Surabaya memuncak pada bulan November 1945. Awalnya, ketegangan dipicu oleh insiden perobekan bendera di Hotel Yamato. Kemudian, situasi semakin memanas setelah tewasnya Brigadir Jenderal Mallaby di depan Gedung Internatio. Sesudah kejadian tersebut, pihak sekutu mengeluarkan ultimatum agar rakyat Surabaya menyerahkan senjata. Namun, ultimatum itu diabaikan sehingga pecahlah pertempuran dahsyat pada 10 November. Sejak saat itu, Surabaya dikenal sebagai Kota Pahlawan.\n\nKata yang berfungsi sebagai konjungsi temporal dalam teks tersebut adalah...", 
+                a: "Kemudian, Sesudah, Sejak", 
+                ex: "Kata 'kemudian', 'sesudah', dan 'sejak' menunjukkan urutan waktu kejadian dari awal hingga akhir.", 
+                o: ["Awalnya, Namun, Agar", "Kemudian, Sesudah, Sejak", "Memuncak, Dipicu, Dikenal", "Dahsyat, Dahulu, Dan", "Setelah, Sehingga, Serta"], 
+                lvl: "L2" 
+            },
+            { 
+                q: "Bacalah teks berikut!\n\nLangkah diplomasi dimulai dengan perundingan Linggarjati untuk mencari titik temu antara Indonesia dan Belanda. Sebelum perundingan dimulai, kedua belah pihak melakukan gencatan senjata di beberapa wilayah rawan. Lalu, naskah persetujuan ditandatangani oleh delegasi kedua negara di istana merdeka. Ketika naskah tersebut hendak diratifikasi, terjadi pergolakan politik di dalam negeri Belanda yang menghambat proses perdamaian. Akhirnya, agresi militer pertama dilancarkan oleh Belanda karena menganggap Indonesia melanggar kesepakatan.\n\nManakah yang termasuk konjungsi temporal pada kutipan di atas?", 
+                a: "Sebelum, Lalu, Ketika, Akhirnya", 
+                ex: "Semua kata tersebut menandai transisi waktu antara satu peristiwa diplomasi ke peristiwa berikutnya.", 
+                o: ["Dimulai, Mencari, Dilancarkan", "Sebelum, Lalu, Ketika, Akhirnya", "Beberapa, Kedua, Semua", "Karena, Sehingga, Bahwa", "Meskipun, Namun, Tetapi"], 
+                lvl: "L2" 
+            },
+            { 
+                q: "Bacalah teks berikut!\n\nSetelah Jepang menyerah tanpa syarat kepada sekutu, terjadi kekosongan kekuasaan di Indonesia. Para pemuda segera mendesak Soekarno dan Hatta untuk memproklamasikan kemerdekaan secepat mungkin. Selanjutnya, peristiwa Rengasdengklok terjadi sebagai upaya menjauhkan kedua tokoh tersebut dari pengaruh Jepang. Begitu kesepakatan tercapai, rombongan segera kembali ke Jakarta untuk merumuskan naskah proklamasi di kediaman Laksamana Maeda.\n\nKonjungsi temporal yang menyatakan urutan peristiwa setelah peristiwa sebelumnya terjadi adalah...", 
+                a: "Selanjutnya", 
+                ex: "Kata 'Selanjutnya' secara spesifik merujuk pada peristiwa yang terjadi setelah desakan para pemuda.", 
+                o: ["Setelah", "Segera", "Selanjutnya", "Begitu", "Untuk"], 
+                lvl: "L2" 
+            }
+        ]
+    },
+    {
+        materi: "Kata Kerja Material dalam Teks Cerita Sejarah",
+        penjelasan: "Kata kerja material adalah kata kerja yang menunjukkan perbuatan fisik atau aktivitas yang dilakukan oleh subjek dan dapat dilihat secara nyata.",
+        soal: [
+            { 
+                q: "Bacalah teks berikut!\n\nPara pejuang mulai membangun benteng pertahanan dari tumpukan karung pasir di sepanjang garis depan. Beberapa pemuda memanggul bambu runcing sambil menyusuri lorong-lorong sempit di pemukiman warga. Sementara itu, kaum perempuan menyiapkan dapur umum dan memasak nasi bungkus untuk didistribusikan ke pos-pos penjagaan. Di kejauhan, para komandan lapangan sedang menulis strategi penyerangan di atas secarik kertas lusuh.\n\nKelompok kata kerja material pada teks tersebut adalah...", 
+                a: "membangun, memanggul, memasak", 
+                ex: "Membangun, memanggul, dan memasak adalah aktivitas fisik yang dilakukan oleh aktor dalam teks.", 
+                o: ["membangun, memanggul, memasak", "menyiapkan, strategi, sempit", "menulis, lusuh, kejauhan", "menyusuri, lorong, pejuang", "didistribusikan, garis, beberapa"], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Bacalah teks berikut!\n\nRaden Ajeng Kartini sering membaca buku-buku sastra dan surat kabar dari Eropa untuk memperluas cakrawala berpikirnya. Beliau juga menulis surat kepada teman-temannya di Belanda untuk menceritakan kondisi perempuan di tanah air. Di waktu luangnya, Kartini mengajar anak-anak perempuan di sekitarnya cara membaca dan menulis. Meskipun didera berbagai rintangan, beliau tetap teguh memegang prinsip untuk memajukan pendidikan bagi kaum wanita.\n\nKata kerja material yang menunjukkan aktivitas Kartini dalam mengolah informasi adalah...", 
+                a: "membaca dan menulis", 
+                ex: "Membaca dan menulis adalah tindakan fisik yang dilakukan Kartini untuk berinteraksi dengan informasi.", 
+                o: ["menceritakan dan memegang", "memperluas dan memajukan", "membaca dan menulis", "mengajar dan didera", "sering dan tetap"], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Bacalah teks berikut!\n\nPasukan Sultan Hasanuddin menghancurkan kapal-kapal dagang Belanda yang mencoba memonopoli rempah-rempah di perairan Makassar. Mereka menyerang dengan taktik gerilya laut yang sangat mengejutkan pihak lawan. Prajurit-prajurit pemberani tersebut melompat ke dek kapal musuh dan menghunuskan pedang ke arah lawan yang lengah. Setelah pertempuran selesai, mereka menarik kapal-kapal tersebut ke pinggir pantai untuk diambil muatannya.\n\nManakah yang bukan merupakan kata kerja material dalam teks di atas?", 
+                a: "mengejutkan", 
+                ex: "Menghancurkan, melompat, menghunuskan, dan menarik adalah tindakan fisik, sedangkan 'mengejutkan' adalah kata kerja mental/psikologis.", 
+                o: ["menghancurkan", "menyerang", "melompat", "mengejutkan", "menarik"], 
+                lvl: "L3" 
+            }
+        ]
+    },
+    {
+        materi: "Kata Sifat dalam Teks Cerita Sejarah",
+        penjelasan: "Kata sifat dalam teks sejarah berfungsi menggambarkan watak tokoh, suasana peristiwa, atau kondisi fisik objek sejarah agar cerita lebih hidup.",
+        soal: [
+            { 
+                q: "Bacalah teks berikut!\n\nBung Tomo dikenal sebagai orator yang sangat gigih dan bersemangat dalam membakar semangat perjuangan rakyat. Suaranya yang lantang menggema melalui corong radio ke seluruh penjuru kota Surabaya. Meskipun situasi saat itu sangat genting dan mencekam karena ancaman serangan udara, beliau tetap bersikap tenang dalam memberikan arahan kepada para pejuang muda.\n\nKata sifat yang menggambarkan suasana dalam teks tersebut adalah...", 
+                a: "genting dan mencekam", 
+                ex: "Genting dan mencekam menjelaskan kondisi atmosfer atau suasana saat ancaman serangan terjadi.", 
+                o: ["gigih dan bersemangat", "lantang dan menggema", "genting dan mencekam", "tenang dan muda", "seluruh dan perjuangan"], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Bacalah teks berikut!\n\nCandi Borobudur berdiri dengan sangat megah di atas bukit yang dikelilingi pemandangan alam hijau nan asri. Struktur bangunannya terbuat dari batu alam yang sangat kuat dan dihiasi dengan relief-relief halus yang menceritakan perjalanan hidup manusia. Meskipun usianya sudah sangat tua, candi ini tetap terlihat kokoh dan menjadi bukti kejayaan arsitektur masa lampau yang luar biasa.\n\nKata sifat yang mendeskripsikan kondisi fisik objek sejarah pada teks di atas adalah...", 
+                a: "megah, kuat, halus, kokoh", 
+                ex: "Kata-kata tersebut menjelaskan karakteristik fisik dari bangunan Candi Borobudur.", 
+                o: ["berdiri, dikelilingi, menceritakan", "megah, kuat, halus, kokoh", "hijau, asri, luar biasa", "tua, lampau, hidup", "struktur, relief, arsitektur"], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Bacalah teks berikut!\n\nPangeran Diponegoro adalah pribadi yang sangat religius dan rendah hati, namun memiliki keberanian yang tiada bandingnya dalam melawan kesewenang-wenangan kolonial. Beliau sangat geram melihat penderitaan rakyat akibat pajak yang tidak adil dan berat. Dengan dukungan pengikut yang setia, beliau memulai perlawanan panjang di wilayah Jawa Tengah yang dikenal dengan Perang Jawa.\n\nManakah kelompok kata sifat yang menunjukkan watak tokoh dalam teks tersebut?", 
+                a: "religius, rendah hati, berani, setia", 
+                ex: "Kata-kata ini menggambarkan kualitas kepribadian dan karakter tokoh serta pendukungnya.", 
+                o: ["melawan, melihat, memulai", "pajak, adil, berat", "religius, rendah hati, berani, setia", "panjang, Jawa, kolonial", "geram, penderitaan, rakyat"], 
+                lvl: "L3" 
+            }
+        ]
+    },
+    {
+        materi: "Makna Kata Ungkapan dalam Teks Cerita Sejarah",
+        penjelasan: "Ungkapan (idiom) adalah gabungan kata yang memiliki makna khusus dan tidak bisa diartikan secara harfiah, sering digunakan untuk memperkaya gaya bahasa dalam cerita sejarah.",
+        soal: [
+            { 
+                q: "Bacalah teks berikut!\n\nSetelah berhasil memadamkan pemberontakan di wilayah utara, sang panglima menjadi anak emas bagi baginda raja. Beliau selalu mendapatkan kepercayaan untuk memimpin ekspedisi penting ke luar pulau. Namun, hal ini memicu kecemburuan di kalangan pejabat istana lainnya yang mulai menyebarkan fitnah keji.\n\nMakna ungkapan 'anak emas' pada teks tersebut adalah...", 
+                a: "orang kesayangan atau orang kepercayaan", 
+                ex: "Dalam konteks cerita, anak emas berarti orang yang sangat disayangi atau dipercaya oleh atasannya (raja).", 
+                o: ["anak yang lahir dari keluarga kaya", "prajurit yang memakai baju zirah emas", "orang kesayangan atau orang kepercayaan", "pemimpin yang sangat berkuasa", "utusan yang membawa pesan rahasia"], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Bacalah teks berikut!\n\nPara pemuda pejuang di masa revolusi harus memutar otak untuk mendapatkan senjata dari gudang militer Jepang tanpa memicu bentrokan berdarah. Dengan modal nekat dan strategi yang matang, mereka berhasil melakukan negosiasi di bawah meja dengan beberapa oknum tentara lawan yang mulai putus asa.\n\nMakna ungkapan 'memutar otak' dan 'di bawah meja' secara berurutan adalah...", 
+                a: "berpikir keras dan secara rahasia/ilegal", 
+                ex: "Memutar otak berarti berpikir sungguh-sungguh, sedangkan di bawah meja berarti melakukan transaksi atau perjanjian tersembunyi/tidak resmi.", 
+                o: ["berlari cepat dan melakukan rapat di bawah meja", "berpikir keras dan secara rahasia/ilegal", "menggerakkan kepala dan menyembunyikan barang", "mencari bantuan dan melakukan sogokan", "berdiskusi lama dan bersembunyi"], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Bacalah teks berikut!\n\nMeskipun sudah berkali-kali diperingatkan, pihak penjajah tetap berkepala batu dan tidak mau mendengarkan aspirasi rakyat untuk merdeka. Hal ini mengakibatkan para tokoh nasional mengambil langkah angkat kaki dari segala bentuk kerja sama dengan pemerintah kolonial.\n\nMakna ungkapan 'berkepala batu' dan 'angkat kaki' adalah...", 
+                a: "sangat keras kepala dan pergi/meninggalkan", 
+                ex: "Berkepala batu berarti sulit dinasehati, sedangkan angkat kaki berarti pergi atau berhenti dari suatu tempat/kondisi.", 
+                o: ["memakai pelindung kepala dan berlari", "sangat keras kepala dan pergi/meninggalkan", "bodoh dan melakukan perlawanan", "sombong dan berhenti bekerja", "kuat dan membatalkan janji"], 
+                lvl: "L3" 
+            }
+        ]
+    },
+    {
+        materi: "Penulisan Tanggal Surat Lamaran Pekerjaan",
+        penjelasan: "Penulisan tanggal surat lamaran pekerjaan yang benar menurut PUEBI tidak menggunakan tanda titik di akhir, nama bulan diawali huruf kapital, dan didahului nama kota.",
+        soal: [
+            { 
+                q: "Perhatikan bagian surat berikut!\n\nTanjungpinang 04 maret 2026.\n\nPerbaikan penulisan tanggal surat lamaran pekerjaan di atas yang paling tepat adalah...", 
+                a: "Tanjungpinang, 4 Maret 2026", 
+                ex: "Nama kota diikuti koma, tanggal tanpa angka nol di depan jika satu digit (opsional namun disarankan), bulan huruf kapital, dan tanpa tanda titik.", 
+                o: ["Tanjungpinang, 4-Maret-2026", "Tanjungpinang, 04 Maret 2026.", "Tanjungpinang, 4 Maret 2026", "Tanjungpinang. 4 Maret 2026", "Tanjung Pinang, 4 Maret 2026."], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Manakah penulisan tempat dan tanggal surat lamaran kerja berikut yang sesuai dengan kaidah kebahasaan?", 
+                a: "Jakarta, 12 Januari 2026", 
+                ex: "Format standar adalah: Kota (koma) Spasi Tanggal (spasi) Bulan (spasi) Tahun.", 
+                o: ["Jakarta, 12-01-2026", "Jakarta, 12 Januari 2026", "Jakarta: 12 Januari 2026", "Jakarta, 12 Januari 2026.", "Jakarta, 12 jan 2026"], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Seorang pelamar menuliskan tanggal surat: 'Batam. 20 Februari 2026'. Letak kesalahan penulisan tersebut adalah...", 
+                a: "penggunaan tanda titik setelah nama kota", 
+                ex: "Setelah nama kota seharusnya menggunakan tanda koma (,), bukan titik (.).", 
+                o: ["penggunaan huruf kapital pada nama kota", "penulisan bulan dengan huruf kapital", "penggunaan tanda titik setelah nama kota", "penulisan tahun yang terlalu lengkap", "tidak adanya tanda titik di akhir tahun"], 
+                lvl: "L3" 
+            }
+        ]
+    },
+    {
+        materi: "Penulisan Perihal Surat Lamaran Pekerjaan",
+        penjelasan: "Perihal surat harus ditulis dengan jelas, ringkas, dan menggunakan huruf kapital di setiap awal kata (Title Case) tanpa tanda titik di akhir.",
+        soal: [
+            { 
+                q: "Penulisan bagian 'Perihal' surat lamaran pekerjaan yang benar adalah...", 
+                a: "Perihal: Lamaran Pekerjaan", 
+                ex: "Perihal diawali huruf kapital, diikuti titik dua, dan isi perihal tanpa tanda titik di akhir.", 
+                o: ["Perihal; Lamaran pekerjaan.", "Perihal: lamaran pekerjaan", "Perihal: Lamaran Pekerjaan", "PERIHAL: LAMARAN PEKERJAAN", "Perihal - Lamaran Pekerjaan"], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Manakah penulisan perihal yang paling tepat jika seseorang melamar sebagai staf administrasi?", 
+                a: "Hal: Lamaran Pekerjaan Staf Administrasi", 
+                ex: "Kata 'Hal' bisa menggantikan 'Perihal', diikuti titik dua dan deskripsi jabatan yang dilamar dengan huruf kapital di setiap awal kata.", 
+                o: ["Hal. lamaran staf administrasi", "Hal: Lamaran Pekerjaan Staf Administrasi", "Hal; Melamar Pekerjaan", "Hal: lamaran pekerjaan Staf Administrasi.", "Perihal: melamar staf administrasi"], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Perhatikan penulisan berikut: 'Perihal: Lamaran Pekerjaan.'. Mengapa penulisan tersebut dianggap salah?", 
+                a: "Karena terdapat tanda titik di akhir kata Pekerjaan", 
+                ex: "Bagian perihal atau subjek surat tidak boleh diakhiri dengan tanda titik karena bukan merupakan kalimat berita.", 
+                o: ["Karena menggunakan huruf kapital di awal kata", "Karena terdapat tanda titik dua", "Karena terdapat tanda titik di akhir kata Pekerjaan", "Karena kata Lamaran tidak menggunakan huruf kecil", "Karena tidak menggunakan garis bawah"], 
+                lvl: "L3" 
+            }
+        ]
+    },
+    {
+        materi: "Penulisan Lampiran Surat Lamaran Pekerjaan",
+        penjelasan: "Jumlah lampiran dalam surat resmi tidak boleh ditulis dengan angka, melainkan harus menggunakan huruf (misal: lima lembar, bukan 5 lembar).",
+        soal: [
+            { 
+                q: "Jika seorang pelamar menyertakan 5 berkas sebagai pendukung lamarannya, penulisan lampiran yang benar adalah...", 
+                a: "Lampiran: Lima lembar", 
+                ex: "Angka dalam jumlah lampiran pada surat lamaran kerja wajib ditulis dengan huruf.", 
+                o: ["Lampiran: 5 berkas", "Lampiran: Lima lembar", "Lampiran: 5 (lima) lembar", "LAMPIRAN: 5 LEMBAR", "Lampiran: lima Lembar."], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Penulisan bagian lampiran yang sesuai dengan aturan surat menyurat resmi adalah...", 
+                a: "Lampiran: Tujuh berkas", 
+                ex: "Format: Lampiran (titik dua) Jumlah (dengan huruf) Berkas/Lembar.", 
+                o: ["Lampiran - 7 lembar", "Lampiran. 7 berkas", "Lampiran: Tujuh berkas", "Lampiran: 7 (Tujuh) Berkas", "Lampiran: tujuh berkas."], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Mengapa penulisan 'Lampiran: 4 lembar' dianggap tidak baku dalam surat lamaran kerja?", 
+                a: "Karena jumlah lampiran harus ditulis dengan huruf, bukan angka", 
+                ex: "Aturan surat resmi mensyaratkan penyebutan jumlah lampiran menggunakan kata-kata, bukan angka numerik.", 
+                o: ["Karena tidak menggunakan tanda koma", "Karena jumlah lampiran harus ditulis dengan huruf, bukan angka", "Karena kata lembar harus diawali huruf kapital", "Karena tanda titik dua seharusnya diganti titik koma", "Karena tidak ada nama berkas yang disebutkan"], 
+                lvl: "L3" 
+            }
+        ]
+    },
+    {
+        materi: "Penulisan Alamat Surat Lamaran Pekerjaan",
+        penjelasan: "Alamat surat tidak menggunakan kata 'Kepada', tidak diakhiri tanda titik, nama jalan tidak disingkat (Jln.), dan jabatan tidak menggunakan jenis kelamin (Bapak/Ibu).",
+        soal: [
+            { 
+                q: "Perhatikan penulisan alamat berikut!\n\nYth. Bapak Pimpinan HRD PT Maju Jaya\nJln. Pramuka No. 10\nTanjungpinang\n\nKesalahan utama pada penulisan alamat surat di atas adalah...", 
+                a: "penyingkatan Jalan dan penggunaan kata Bapak sebelum jabatan", 
+                ex: "Jalan tidak boleh disingkat (Jln.) dan jabatan (Pimpinan) tidak boleh diikuti sapaan (Bapak/Ibu).", 
+                o: ["penggunaan Yth. di awal alamat", "penulisan nama kota tanpa garis bawah", "penyingkatan Jalan dan penggunaan kata Bapak sebelum jabatan", "penulisan PT yang tidak menggunakan tanda titik", "penggunaan nomor jalan yang terlalu jelas"], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Manakah penulisan alamat surat lamaran pekerjaan yang paling benar sesuai aturan PUEBI?", 
+                a: "Yth. Manajer Personalia PT Surya Indah\nJalan Bandara Nomor 15\nTanjungpinang", 
+                ex: "Tidak ada kata 'Kepada', 'Jalan' tidak disingkat, tanpa sapaan Bapak/Ibu untuk jabatan, dan tanpa tanda titik di akhir setiap baris.", 
+                o: ["Kepada Yth. Bapak Manajer PT Surya Indah\nJln. Bandara 15\nTanjungpinang", "Yth. Manajer Personalia PT Surya Indah\nJalan Bandara Nomor 15\nTanjungpinang", "Yth: Manajer Personalia PT. Surya Indah\nJalan Bandara 15\nTanjungpinang.", "Yth. Bpk Manajer PT Surya Indah\nJalan. Bandara no 15\nTanjungpinang", "Kepada: HRD PT Surya Indah\nJl. Bandara Nomor 15\nTanjungpinang"], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Kesalahan penulisan alamat: 'Yth. Direktur CV. Makmur Jaya'. Apa yang menyebabkan penulisan PT atau CV tersebut salah?", 
+                a: "Penggunaan tanda titik setelah singkatan CV", 
+                ex: "Singkatan PT atau CV tidak perlu diikuti dengan tanda titik (.).", 
+                o: ["Penggunaan huruf kapital", "Penggunaan kata Yth.", "Penggunaan tanda titik setelah singkatan CV", "Tidak menggunakan kata Kepada", "Penulisan nama perusahaan yang terlalu panjang"], 
+                lvl: "L3" 
+            }
+        ]
+    },
+    {
+        materi: "Tanda Baca dalam Lampiran Surat Lamaran Pekerjaan",
+        penjelasan: "Dalam rincian lampiran (isi berkas), setiap butir biasanya diakhiri dengan tanda titik koma (;) dan butir terakhir diakhiri dengan tanda titik (.).",
+        soal: [
+            { 
+                q: "Perhatikan rincian berkas lampiran berikut!\n\n1. Fotokopi ijazah terlegalisir;\n2. Daftar riwayat hidup;\n3. Pasfoto ukuran 3x4...\n\nTanda baca yang paling tepat untuk melengkapi butir nomor 3 adalah...", 
+                a: "tanda titik (.)", 
+                ex: "Butir terakhir dalam sebuah rincian lampiran harus diakhiri dengan tanda titik.", 
+                o: ["tanda koma (,)", "tanda titik koma (;)", "tanda titik (.)", "tanda seru (!)", "tidak menggunakan tanda baca"], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Manakah penggunaan tanda baca yang benar dalam rincian berkas pendukung lamaran?", 
+                a: "fotokopi kartu tanda penduduk; dan\npasfoto berwarna.", 
+                ex: "Menggunakan titik koma (;) di antara butir dan titik (.) di akhir butir terakhir.", 
+                o: ["fotokopi kartu tanda penduduk, dan\npasfoto berwarna,", "fotokopi kartu tanda penduduk; dan\npasfoto berwarna.", "fotokopi kartu tanda penduduk dan\npasfoto berwarna", "fotokopi kartu tanda penduduk: dan\npasfoto berwarna.", "fotokopi kartu tanda penduduk.\ndan pasfoto berwarna."], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Dalam penulisan rincian, tanda baca titik koma (;) berfungsi untuk...", 
+                a: "memisahkan unsur-unsur rincian agar lebih jelas", 
+                ex: "Titik koma digunakan untuk memisahkan bagian-bagian perincian yang sudah mengandung koma atau sebagai pengganti kata penghubung dalam daftar.", 
+                o: ["mengakhiri sebuah kalimat perintah", "mengawali kutipan langsung", "memisahkan unsur-unsur rincian agar lebih jelas", "menghubungkan dua kata yang sama", "menunjukkan waktu dan jam"], 
+                lvl: "L3" 
+            }
+        ]
+    },
+    {
+        materi: "Penulisan Kata yang Kurang Tepat dalam Penutup Surat",
+        penjelasan: "Penutup surat harus menggunakan bahasa yang efektif, sopan, dan menghindari penggunaan kata ganti -nya untuk merujuk pada orang kedua (Yth.).",
+        soal: [
+            { 
+                q: "Perhatikan kalimat penutup berikut!\n\n'Demikian surat lamaran ini saya sampaikan, atas perhatiannya saya ucapkan terima kasih.'\n\nPerbaikan kata yang dicetak miring agar menjadi baku adalah...", 
+                a: "Bapak/Ibu", 
+                ex: "Penggunaan '-nya' tidak sopan untuk merujuk kepada penerima surat (Yth.). Seharusnya menggunakan sapaan Bapak/Ibu.", 
+                o: ["beliau", "Bapak/Ibu", "saudara", "pimpinan", "PT"], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Kalimat penutup surat lamaran pekerjaan yang efektif dan benar adalah...", 
+                a: "Atas perhatian Bapak/Ibu, saya mengucapkan terima kasih.", 
+                ex: "Singkat, sopan, menggunakan sapaan yang benar (Bapak/Ibu), dan tidak menggunakan 'banyak-banyak'.", 
+                o: ["Atas perhatiannya, saya haturkan banyak terima kasih.", "Besar harapan saya untuk bisa diterima di perusahaan ini.", "Atas perhatian Bapak/Ibu, saya mengucapkan terima kasih.", "Sekian dan terima kasih banyak atas perhatian Bapak.", "Terima kasih atas segala perhatiannya kepada saya."], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Mengapa kalimat 'Demikianlah surat lamaran ini, atas bantuannya dihaturkan terima kasih' dianggap salah secara kebahasaan?", 
+                a: "karena penggunaan kata -nya dan kata dihaturkan yang tidak baku", 
+                ex: "'-nya' salah merujuk, dan 'dihaturkan' terlalu puitis/daerah untuk surat resmi; yang benar adalah 'mengucapkan'.", 
+                o: ["karena kalimatnya terlalu panjang", "karena tidak menggunakan kata sapaan", "karena penggunaan kata -nya dan kata dihaturkan yang tidak baku", "karena menggunakan tanda baca koma", "karena menggunakan kata kerja pasif"], 
+                lvl: "L3" 
+            }
+        ]
+    },
+    
+    {
+        materi: "Penulisan Alamat Surat Lamaran Pekerjaan (Lanjutan)",
+        penjelasan: "Alamat surat merupakan unsur penting yang harus ditulis tanpa menggunakan kata 'Kepada', tanpa titik di akhir baris, dan gelar atau sapaan tidak boleh disandingkan dengan jabatan.",
+        soal: [
+            { 
+                q: "Bacalah penggalan alamat surat berikut!\n\nYth. Direktur PT Global Mandiri\nJalan Merdeka Nomor 10, Tanjung Ayun Sakti\nKecamatan Bukit Bestari, Kota Tanjungpinang 29124\n\nPenulisan alamat di atas sudah benar karena...", 
+                a: "tidak menggunakan kata 'Kepada' dan tidak diakhiri tanda titik", 
+                ex: "Sesuai kaidah surat resmi, alamat tujuan tidak diawali 'Kepada' dan tiap baris tidak diakhiri tanda baca.", 
+                o: ["menggunakan huruf kapital semua", "menggunakan tanda koma di akhir baris", "tidak menggunakan kata 'Kepada' dan tidak diakhiri tanda titik", "mencantumkan kode pos di awal kalimat", "menyertakan nama kecamatan secara lengkap"], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Bacalah teks berikut!\n\nSeorang pelamar ingin mengirimkan surat ke sebuah perusahaan di Jalan Pramuka. Ia menuliskan: Yth. Bapak HRD Manager PT. Maju Bersama. Penulisan tersebut salah karena...", 
+                a: "penggunaan sapaan 'Bapak' sebelum jabatan dan titik pada 'PT.'", 
+                ex: "Sapaan Bapak/Ibu tidak boleh diikuti jabatan (HRD Manager) dan penulisan PT tidak boleh menggunakan titik.", 
+                o: ["penggunaan kata Yth. seharusnya Kepada", "penggunaan sapaan 'Bapak' sebelum jabatan dan titik pada 'PT.'", "penulisan HRD seharusnya menggunakan huruf kecil", "nama perusahaan seharusnya di baris kedua", "kata Manager seharusnya diganti Manajer"], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Manakah penulisan alamat surat yang paling tepat jika ditujukan ke kantor SMK Negeri 1 Tanjungpinang?", 
+                a: "Yth. Kepala SMK Negeri 1 Tanjungpinang\nJalan Pramuka Nomor 6\nTanjungpinang", 
+                ex: "Penulisan 'Jalan' tidak disingkat dan tidak ada tanda titik di akhir baris alamat.", 
+                o: ["Yth. Kepala SMKN 1 Tanjungpinang.\nJl. Pramuka No.6\nTanjungpinang", "Yth. Kepala SMK Negeri 1 Tanjungpinang\nJalan Pramuka Nomor 6\nTanjungpinang", "Kepada Yth. Kepala SMK N 1\nJln Pramuka 6\nTanjungpinang", "Yth. Bapak Kepala Sekolah SMK 1\nJalan Pramuka 6\nTanjungpinang.", "Kepada: SMK Negeri 1 Tanjungpinang\nJln. Pramuka No. 6\nTanjungpinang"], 
+                lvl: "L3" 
+            }
+        ]
+    },
+    {
+        materi: "Salam Penutup dalam Surat Lamaran Pekerjaan",
+        penjelasan: "Salam penutup berfungsi sebagai penutup pembicaraan yang sopan. Penulisan yang benar adalah 'Hormat saya,' dengan huruf kapital di awal dan diakhiri tanda koma.",
+        soal: [
+            { 
+                q: "Bacalah bagian surat berikut!\n\nDemikian surat lamaran ini saya buat. Atas perhatian Bapak/Ibu, saya mengucapkan terima kasih.\n\nHormat Saya.\n(Tanda tangan)\nHalberg\n\nKesalahan penulisan salam penutup pada teks di atas adalah...", 
+                a: "penggunaan huruf kapital pada kata 'Saya' dan tanda titik", 
+                ex: "Salam penutup yang benar adalah 'Hormat saya,' (huruf 's' kecil dan diakhiri tanda koma).", 
+                o: ["penggunaan kata 'Hormat'", "penggunaan huruf kapital pada kata 'Saya' dan tanda titik", "penulisan nama pelamar yang tidak dikurung", "penggunaan tanda tangan di tengah", "kata 'terima kasih' seharusnya digabung"], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Penulisan salam penutup yang paling tepat untuk surat lamaran pekerjaan adalah...", 
+                a: "Hormat saya,", 
+                ex: "Hormat saya menggunakan huruf kapital hanya di awal (H) dan diakhiri tanda koma.", 
+                o: ["Hormat Saya,", "hormat saya,", "Hormat saya.", "Hormat Saya.", "Hormat saya,"], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Dalam struktur surat lamaran pekerjaan, salam penutup diletakkan di...", 
+                a: "bawah kalimat penutup, di sebelah kanan bawah", 
+                ex: "Salam penutup standar diletakkan di bagian kanan bawah sebelum tanda tangan dan nama terang.", 
+                o: ["atas kalimat pembuka", "setelah identitas diri", "bawah kalimat penutup, di sebelah kanan bawah", "pojok kiri atas setelah tanggal", "setelah lampiran surat"], 
+                lvl: "L3" 
+            }
+        ]
+    },
+    {
+        materi: "Makna Kata Ungkapan dalam Teks Iklan",
+        penjelasan: "Iklan sering menggunakan ungkapan atau idiom untuk menarik perhatian konsumen dengan bahasa yang persuasif dan unik.",
+        soal: [
+            { 
+                q: "Bacalah teks iklan berikut!\n\nIngin memiliki hunian impian dengan harga miring? Perumahan Griya Surya Indah solusinya! Dapatkan promo cuci gudang untuk tiga unit terakhir bulan ini. Jangan sampai gigit jari karena kehabisan!\n\nMakna ungkapan 'harga miring' dan 'gigit jari' pada iklan di atas adalah...", 
+                a: "harga murah dan kecewa", 
+                ex: "Harga miring berarti harga yang lebih murah dari standar, gigit jari berarti merasa kecewa atau menyesal.", 
+                o: ["harga tidak rata dan sakit jari", "harga stabil dan senang", "harga murah dan kecewa", "harga mahal dan bangga", "harga promo dan terkejut"], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Bacalah teks iklan berikut!\n\nDibutuhkan segera tenaga pemasaran yang memiliki kemampuan negosiasi tinggi dan berwajah segar. Kami mencari individu yang ringan tangan dan mampu bekerja di bawah tekanan. Fasilitas gaji menarik menanti Anda!\n\nMakna ungkapan 'ringan tangan' dalam konteks lowongan kerja di atas adalah...", 
+                a: "suka membantu atau rajin bekerja", 
+                ex: "Dalam dunia kerja, ringan tangan bermakna positif yaitu orang yang rajin atau suka menolong.", 
+                o: ["suka memukul", "suka mencuri", "suka membantu atau rajin bekerja", "tidak mau bekerja berat", "memiliki tangan yang kecil"], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Bacalah teks iklan berikut!\n\nKatering Lezat Jaya: Kami memberikan pelayanan nomor satu untuk setiap acara spesial Anda. Masakan kami adalah buah bibir di seluruh kota karena cita rasanya yang autentik.\n\nMakna ungkapan 'nomor satu' dan 'buah bibir' adalah...", 
+                a: "terbaik dan bahan pembicaraan", 
+                ex: "Nomor satu berarti yang terbaik/utama, buah bibir berarti hal yang ramai dibicarakan orang.", 
+                o: ["pertama kali dan rasa buah", "terbaik dan bahan pembicaraan", "juara lomba dan pandai bicara", "pelayanan cepat dan haus", "paling mahal dan sangat enak"], 
+                lvl: "L3" 
+            }
+        ]
+    },
+    {
+        materi: "Kaidah Kebahasaan Teks Iklan",
+        penjelasan: "Teks iklan harus menggunakan bahasa yang persuasif (mengajak), komunikatif, singkat, padat, dan jelas.",
+        soal: [
+            { 
+                q: "Bacalah teks iklan berikut!\n\nSegera miliki koleksi terbaru sepatu atletik kami! Didesain khusus untuk kenyamanan kaki Anda saat berlari. Stok terbatas, beli sekarang dan dapatkan diskon hingga lima puluh persen!\n\nCiri kebahasaan teks iklan yang paling menonjol pada kalimat terakhir adalah...", 
+                a: "menggunakan kalimat persuasif dan imperatif", 
+                ex: "Kalimat tersebut mengajak (persuasif) dan memberi perintah/ajakan halus 'beli sekarang' (imperatif).", 
+                o: ["menggunakan bahasa teknis yang rumit", "menggunakan kalimat persuasif dan imperatif", "menggunakan majas metafora yang berlebihan", "menggunakan sudut pandang orang ketiga", "menggunakan bahasa yang puitis dan mendayu"], 
+                lvl: "L1" 
+            },
+            { 
+                q: "Manakah ciri utama bahasa iklan yang membedakannya dengan teks narasi sejarah?", 
+                a: "bahasanya bersifat sugestif dan membujuk", 
+                ex: "Iklan bertujuan memengaruhi pembaca (sugestif), sedangkan narasi sejarah bersifat informatif faktual.", 
+                o: ["menggunakan kata-kata arkais", "bahasanya bersifat sugestif dan membujuk", "terdapat urutan kronologis waktu", "menggunakan kalimat yang sangat panjang", "menyertakan daftar riwayat hidup"], 
+                lvl: "L1" 
+            },
+            { 
+                q: "Dalam teks iklan, penggunaan kata 'Eksklusif', 'Murah', 'Terpercaya', dan 'Instan' bertujuan untuk...", 
+                a: "memberikan kesan positif dan menarik minat konsumen", 
+                ex: "Kata-kata tersebut adalah kata sifat pilihan (diksi) yang bertujuan menarik perhatian (attraction).", 
+                o: ["memperumit pemahaman pembaca", "menggambarkan kondisi masa lalu", "memberikan kesan positif dan menarik minat konsumen", "menjelaskan cara penggunaan produk", "menyembunyikan kekurangan barang"], 
+                lvl: "L1" 
+            }
+        ]
+    },
+    {
+        materi: "Jenis Iklan (Iklan Baris)",
+        penjelasan: "Iklan baris adalah iklan singkat yang terdiri atas beberapa baris saja di kolom khusus, biasanya menggunakan singkatan untuk menghemat ruang dan biaya.",
+        soal: [
+            { 
+                q: "Bacalah ilustrasi berikut!\n\nPak Halberg ingin menjual laptop Lenovo Yoga miliknya. Kondisinya masih sangat bagus, RAM 32GB, dan harga bisa nego. Ia ingin memasang iklan di koran dengan biaya yang paling murah.\n\nTeks iklan baris yang paling tepat untuk ilustrasi di atas adalah...", 
+                a: "Jual Lptp Lenovo Yoga, RAM 32GB, mulus, hrg nego. Hub: 0812345678", 
+                ex: "Iklan baris menggunakan singkatan (Lptp, hrg) dan poin-poin penting untuk efisiensi tempat.", 
+                o: ["Dijual sebuah laptop merek Lenovo Yoga dengan spesifikasi tinggi RAM 32GB. Kondisi sangat terawat dan harga bisa dinegosiasikan.", "Jual Lptp Lenovo Yoga, RAM 32GB, mulus, hrg nego. Hub: 0812345678", "Lenovo Yoga dijual murah sekali bagi yang butuh segera. Hubungi Halberg.", "Butuh uang, jual cepat laptop kesayangan RAM 32GB. Harga damai saja.", "Iklan: Jual laptop Lenovo Yoga RAM 32GB mulus hrg nego hub Halberg."], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Bacalah iklan baris berikut!\n\nCari tng srabutan, pria, mks 30 th, jujur, ulet. Dtg lgsg ke Jl. Bandara 15 Tpi.\n\nArti dari singkatan 'tng srabutan' dan 'mks 30 th' adalah...", 
+                a: "tenaga serabutan dan maksimal 30 tahun", 
+                ex: "Tng = tenaga, srabutan = serabutan, mks = maksimal, th = tahun.", 
+                o: ["tangga serabutan dan makan siang 30 tahun", "tenaga serabutan dan maksimal 30 tahun", "tenaga sembarangan dan minimal 30 tahun", "tunjangan serabutan dan maksimal 30 tahun", "tenaga serabutan dan makam 30 tahun"], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Karakteristik utama yang membedakan iklan baris dengan iklan kolom adalah...", 
+                a: "iklan baris hanya berupa teks singkat tanpa gambar", 
+                ex: "Iklan baris murni teks singkat dengan singkatan, sedangkan iklan kolom bisa disertai gambar/ilustrasi.", 
+                o: ["iklan baris memiliki ukuran yang sangat besar", "iklan baris hanya berupa teks singkat tanpa gambar", "iklan baris biayanya jauh lebih mahal", "iklan baris menggunakan bahasa yang puitis", "iklan baris dipasang di televisi"], 
+                lvl: "L3" 
+            }
+        ]
+    },
+    {
+        materi: "Kalimat Fakta dalam Teks Iklan",
+        penjelasan: "Fakta dalam iklan berupa data objektif seperti spesifikasi produk, alamat, harga tetap, atau nomor telepon yang dapat dibuktikan.",
+        soal: [
+            { 
+                q: "Bacalah teks iklan berikut!\n\n(1) Laptop Ryzen AI 9 365 kini hadir dengan performa luar biasa! (2) Dilengkapi RAM 32GB dan penyimpanan SSD 1TB. (3) Beratnya hanya 1,4 kg, sangat ringan untuk dibawa ke mana saja. (4) Inilah laptop terbaik yang pernah diciptakan manusia. (5) Kunjungi toko kami di Jalan Pramuka Nomor 6.\n\nKalimat yang merupakan fakta pada iklan tersebut adalah nomor...", 
+                a: "(2), (3), dan (5)", 
+                ex: "Kalimat 2 (spesifikasi), 3 (berat fisik), dan 5 (alamat) adalah fakta objektif.", 
+                o: ["(1), (2), dan (3)", "(2), (3), dan (4)", "(2), (3), dan (5)", "(3), (4), dan (5)", "Semua kalimat"], 
+                lvl: "L2" 
+            },
+            { 
+                q: "Manakah yang termasuk kalimat fakta dalam iklan perumahan?", 
+                a: "Tersedia tipe 36 dengan luas tanah 72 meter persegi.", 
+                ex: "Tipe bangunan dan luas tanah adalah data fisik yang pasti (fakta).", 
+                o: ["Lingkungan sangat asri dan menyejukkan jiwa.", "Tersedia tipe 36 dengan luas tanah 72 meter persegi.", "Investasi paling menguntungkan di masa depan.", "Rumah ini akan membawa keberuntungan bagi pemiliknya.", "Desain modern yang membuat tetangga iri."], 
+                lvl: "L2" 
+            },
+            { 
+                q: "Bacalah teks iklan berikut!\n\nPromo cuci gudang smartphone seri X! Diskon khusus sepuluh persen hanya berlaku hari ini, 4 Maret 2026. Segera hubungi 0811-2233-44.\n\nUnsur fakta dalam iklan tersebut adalah...", 
+                a: "besaran diskon, tanggal berlaku, dan nomor telepon", 
+                ex: "Data numerik dan tanggal adalah fakta yang dapat diverifikasi.", 
+                o: ["besaran diskon, tanggal berlaku, dan nomor telepon", "kualitas smartphone yang sangat canggih", "perasaan senang saat membeli produk", "nama pemilik toko", "janji smartphone tidak akan rusak"], 
+                lvl: "L2" 
+            }
+        ]
+    },
+    {
+        materi: "Kalimat Opini dalam Teks Iklan",
+        penjelasan: "Opini dalam iklan berupa klaim keunggulan produk yang bersifat subjektif, seperti 'terbaik', 'paling enak', atau 'pasti puas'.",
+        soal: [
+            { 
+                q: "Bacalah teks iklan berikut!\n\n(1) Gunakan sabun mandi 'Harum Wangi'. (2) Terbuat dari ekstrak bunga mawar alami. (3) Kulit Anda akan terasa sehalus sutra setelah satu kali pemakaian. (4) Membuat Anda menjadi pusat perhatian di mana pun berada. (5) Tersedia di seluruh toko retail terdekat.\n\nKalimat opini pada iklan di atas ditunjukkan oleh nomor...", 
+                a: "(3) dan (4)", 
+                ex: "Kalimat 3 dan 4 adalah janji atau klaim subjektif (opini) yang hasilnya bisa berbeda bagi tiap orang.", 
+                o: ["(1) dan (2)", "(2) dan (3)", "(3) dan (4)", "(4) dan (5)", "(1) dan (5)"], 
+                lvl: "L1" 
+            },
+            { 
+                q: "Manakah kalimat yang mengandung opini dalam iklan makanan?", 
+                a: "Cita rasa yang tiada duanya, dijamin ketagihan!", 
+                ex: "Klaim 'tiada duanya' dan 'dijamin ketagihan' adalah pendapat subjektif.", 
+                o: ["Mengandung 100% daging sapi asli.", "Tanpa bahan pengawet dan pewarna buatan.", "Cita rasa yang tiada duanya, dijamin ketagihan!", "Tersedia dalam kemasan 500 gram.", "Dapatkan di gerai kami terdekat."], 
+                lvl: "L1" 
+            },
+            { 
+                q: "Kalimat iklan 'Kursus bahasa Inggris kami adalah yang paling efektif di Indonesia' termasuk kategori opini karena...", 
+                a: "menggunakan kata 'paling efektif' yang sifatnya subjektif", 
+                ex: "Efektivitas adalah hal yang relatif dan belum tentu disepakati secara objektif oleh semua orang.", 
+                o: ["menyebutkan nama negara Indonesia", "menggunakan kata 'paling efektif' yang sifatnya subjektif", "menjelaskan jenis kursus yang ditawarkan", "menggunakan bahasa yang terlalu singkat", "tidak mencantumkan harga kursus"], 
+                lvl: "L1" 
+            }
+        ]
+    },
+    {
+        materi: "Kalimat Persuasif dalam Teks Iklan",
+        penjelasan: "Kalimat persuasif adalah kalimat yang bertujuan membujuk atau merayu pembaca agar mengikuti keinginan pemasang iklan (membeli atau menggunakan jasa).",
+        soal: [
+            { 
+                q: "Bacalah teks iklan berikut!\n\nApakah Anda lelah dengan baterai ponsel yang cepat habis? Powerbank Anker A1695 solusinya! Jangan biarkan hari Anda terganggu oleh ponsel yang mati total. Segera dapatkan di toko resmi kami dan rasakan kemudahan mengisi daya di mana saja!\n\nKalimat yang bersifat persuasif dalam iklan di atas adalah...", 
+                a: "Segera dapatkan di toko resmi kami dan rasakan kemudahan mengisi daya di mana saja!", 
+                ex: "Kalimat ini mengajak langsung konsumen untuk segera bertindak (membeli).", 
+                o: ["Powerbank Anker A1695 solusinya!", "Apakah Anda lelah dengan baterai ponsel yang cepat habis?", "Jangan biarkan hari Anda terganggu oleh ponsel yang mati total.", "Segera dapatkan di toko resmi kami dan rasakan kemudahan mengisi daya di mana saja!", "Ponsel mati total sangat mengganggu."], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Tujuan utama penggunaan kalimat persuasif dalam teks iklan adalah...", 
+                a: "memengaruhi psikologi konsumen agar melakukan pembelian", 
+                ex: "Iklan memang dirancang untuk membujuk (persuade) calon pelanggan.", 
+                o: ["memberikan informasi sejarah produk secara detail", "memengaruhi psikologi konsumen agar melakukan pembelian", "mengkritik produk kompetitor secara tajam", "menjelaskan spesifikasi teknis yang rumit", "memperpanjang durasi membaca teks iklan"], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Manakah kalimat berikut yang paling memiliki daya persuasi tinggi dalam iklan minuman kesehatan?", 
+                a: "Ayo, jaga daya tahan tubuhmu setiap hari dengan minum sari buah asli!", 
+                ex: "Kata 'Ayo' dan ajakan menjaga kesehatan adalah bentuk persuasi yang kuat.", 
+                o: ["Minuman ini mengandung vitamin C tinggi.", "Botol kemasan terbuat dari plastik daur ulang.", "Ayo, jaga daya tahan tubuhmu setiap hari dengan minum sari buah asli!", "Satu kotak berisi dua belas botol.", "Minuman ini berwarna kuning cerah."], 
+                lvl: "L3" 
+            }
+        ]
+    },
+    {
+        materi: "Struktur Teks Iklan (Justifikasi)",
+        penjelasan: "Justifikasi dalam iklan adalah bagian yang berisi deskripsi detail produk, keunggulan, serta cara mendapatkan produk tersebut.",
+        soal: [
+            { 
+                q: "Bacalah teks iklan berikut!\n\nKacamata RayNeo Air 3s Pro: Monitor Raksasa dalam Genggaman Anda! Dengan layar micro-OLED 120Hz, kacamata AR ini memberikan pengalaman menonton bioskop pribadi. Tersedia promo cicilan nol persen hanya di marketplace pilihan.\n\nBagian yang berfungsi sebagai 'justifikasi' dalam iklan di atas adalah...", 
+                a: "Layar micro-OLED 120Hz dan promo cicilan nol persen", 
+                ex: "Justifikasi menjelaskan spesifikasi teknis dan detail cara mendapatkan (promo cicilan).", 
+                o: ["Kacamata RayNeo Air 3s Pro", "Monitor Raksasa dalam Genggaman Anda!", "Layar micro-OLED 120Hz dan promo cicilan nol persen", "Bioskop pribadi di rumah", "Marketplace pilihan Anda"], 
+                lvl: "L1" 
+            },
+            { 
+                q: "Bagian struktur teks iklan yang biasanya berisi nama produk atau jasa yang ditawarkan disebut...", 
+                a: "orientasi atau judul iklan", 
+                ex: "Orientasi/Judul memperkenalkan apa yang sedang diiklankan terlebih dahulu.", 
+                o: ["tubuh iklan", "justifikasi", "orientasi atau judul iklan", "penutup iklan", "sumber iklan"], 
+                lvl: "L1" 
+            },
+            { 
+                q: "Dalam sebuah iklan mobil, penjelasan mengenai fitur keamanan pengereman otomatis, sensor parkir, dan jumlah airbag termasuk ke dalam bagian struktur...", 
+                a: "justifikasi", 
+                ex: "Penjelasan detail fitur dan manfaat produk masuk dalam kategori justifikasi atau isi iklan.", 
+                o: ["judul", "orientasi", "justifikasi", "alamat", "salam pembuka"], 
+                lvl: "L1" 
+            }
+        ]
+    },
+    {
+        materi: "Penulisan Tanggal dalam Surat Dinas",
+        penjelasan: "Surat dinas resmi mencantumkan nama kota dan tanggal tanpa tanda titik di akhir, mirip dengan surat lamaran tetapi seringkali menyertakan nomor surat pada bagian atasnya.",
+        soal: [
+            { 
+                q: "Bacalah penggalan kepala surat dinas berikut!\n\nSMK NEGERI 1 TANJUNGPINANG\nJalan Pramuka Nomor 6, Tanjungpinang\n\nTanjungpinang, 4 Maret 2026.\n\nPenulisan tanggal surat dinas di atas salah karena...", 
+                a: "penggunaan tanda titik setelah angka 2026", 
+                ex: "Sama seperti surat resmi lainnya, bagian tanggal tidak diakhiri tanda titik.", 
+                o: ["nama kota tidak menggunakan huruf kapital", "penulisan angka tahun terlalu lengkap", "penggunaan tanda titik setelah angka 2026", "tidak ada tanda koma setelah bulan", "seharusnya bulan ditulis dengan angka"], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Manakah penulisan tempat dan tanggal surat dinas yang benar sesuai kaidah?", 
+                a: "Tanjungpinang, 4 Maret 2026", 
+                ex: "Format: Nama Kota (koma) Spasi Tanggal (spasi) Bulan (spasi) Tahun (tanpa titik).", 
+                o: ["Tanjungpinang: 4 Maret 2026", "Tanjungpinang. 4 Maret 2026", "Tanjungpinang, 4 Maret 2026", "Tanjungpinang, 04-03-2026", "Tanjungpinang, 4-Maret-2026."], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Dalam surat dinas, tanggal surat diletakkan di...", 
+                a: "sebelah kanan atas atau di bawah kepala surat", 
+                ex: "Tanggal surat dinas biasanya diletakkan lurus dengan nomor surat atau di bawah kepala surat sebelah kanan.", 
+                o: ["dalam lampiran", "sebelah kanan atas atau di bawah kepala surat", "setelah salam penutup", "sebelum isi surat di sebelah kiri", "di dalam pojok kiri bawah"], 
+                lvl: "L3" 
+            }
+        ]
+    },
+    
+    {
+        materi: "Sistematika Surat Dinas",
+        penjelasan: "Surat dinas memiliki sistematika formal yang terdiri dari kepala surat, nomor, lampiran, perihal, tanggal, alamat tujuan, salam pembuka, isi, penutup, serta nama dan tanda tangan pengirim.",
+        soal: [
+            { 
+                q: "Bacalah penggalan surat berikut!\n\nNomor: 045/SMKN1/III/2026\nLampiran: Satu berkas\nPerihal: Undangan Rapat Orang Tua\n\nDalam sistematika surat dinas, bagian yang terletak tepat setelah perihal adalah...", 
+                a: "Alamat tujuan surat", 
+                ex: "Setelah identitas surat (Nomor, Lamp, Hal), sistematika selanjutnya adalah penulisan alamat tujuan surat.", 
+                o: ["Salam pembuka", "Alamat tujuan surat", "Isi surat", "Kepala surat", "Tembusan"], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Manakah urutan sistematika bagian awal surat dinas yang paling tepat?", 
+                a: "Kepala surat, tanggal surat, nomor, lampiran, perihal, alamat tujuan", 
+                ex: "Urutan ini mengikuti standar penulisan surat dinas resmi di instansi pemerintahan.", 
+                o: ["Tanggal surat, kepala surat, nomor, perihal", "Kepala surat, nomor, alamat tujuan, salam pembuka", "Kepala surat, tanggal surat, nomor, lampiran, perihal, alamat tujuan", "Nomor, lampiran, perihal, kepala surat, isi", "Alamat tujuan, salam pembuka, isi, penutup"], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Bagian surat dinas yang berfungsi sebagai identitas unik dari instansi pengirim agar memudahkan pengarsipan disebut...", 
+                a: "Nomor surat", 
+                ex: "Nomor surat berisi kode instansi, urutan surat, dan waktu keluar surat untuk keperluan pengarsipan.", 
+                o: ["Perihal", "Lampiran", "Nomor surat", "Kepala surat", "Alamat tujuan"], 
+                lvl: "L3" 
+            }
+        ]
+    },
+    {
+        materi: "Penulisan Nama Instansi dalam Kepala Surat",
+        penjelasan: "Nama instansi pada kepala surat dinas ditulis menggunakan huruf kapital sepenuhnya (All Caps) dan tidak boleh disingkat untuk menjaga formalitas.",
+        soal: [
+            { 
+                q: "Berdasarkan standar surat dinas Pemerintah Provinsi Kepulauan Riau, penulisan nama instansi yang benar pada kepala surat adalah...", 
+                a: "SMK NEGERI 1 TANJUNGPINANG", 
+                ex: "Nama instansi utama dalam kepala surat wajib menggunakan huruf kapital secara keseluruhan[cite: 1, 3, 15].", 
+                o: ["Smk Negeri 1 Tanjungpinang", "SMK Negeri 1 Tanjungpinang", "SMK NEGERI 1 TANJUNGPINANG", "SMKN 1 Tanjungpinang", "smk negeri 1 tanjungpinang"], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Perhatikan bagian kepala surat berikut!\n\nPEMERINTAH PROVINSI KEPULAUAN RIAU\nDINAS PENDIDIKAN\n...\n\nBagian kosong setelah DINAS PENDIDIKAN seharusnya diisi dengan penulisan instansi yang tepat, yaitu...", 
+                a: "SMK NEGERI 1 TANJUNGPINANG", 
+                ex: "Sesuai hirarki, nama sekolah diletakkan di bawah nama dinas dengan format huruf kapital[cite: 1, 2, 3, 15].", 
+                o: ["Smk Negeri 1 Tanjungpinang", "SMKN 1 Tanjungpinang", "SMK NEGERI 1 TANJUNGPINANG", "Upt Smk Negeri 1", "SMK N 1 TANJUNGPINANG"], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Mengapa penulisan nama instansi pada kepala surat dinas tidak boleh disingkat seperti 'SMKN 1 TPI'?", 
+                a: "Karena kepala surat merupakan identitas resmi yang harus ditulis lengkap sesuai nomenklatur", 
+                ex: "Penulisan lengkap menunjukkan keformalan dan kejelasan asal instansi tersebut.", 
+                o: ["Agar terlihat lebih panjang", "Karena ruang di kertas masih banyak", "Karena kepala surat merupakan identitas resmi yang harus ditulis lengkap sesuai nomenklatur", "Agar pembaca kesulitan memahami", "Karena mengikuti aturan singkatan internasional"], 
+                lvl: "L3" 
+            }
+        ]
+    },
+    {
+        materi: "Penulisan Kalimat Penutup Surat Dinas",
+        penjelasan: "Kalimat penutup surat dinas harus efektif dan menggunakan sapaan yang tepat (Bapak/Ibu/Saudara) tanpa menggunakan kata ganti '-nya'.",
+        soal: [
+            { 
+                q: "Manakah kalimat penutup surat dinas yang paling baku dan efektif?", 
+                a: "Atas perhatian Bapak/Ibu, kami mengucapkan terima kasih.", 
+                ex: "Kalimat ini bersifat formal, menggunakan subjek 'kami' (mewakili instansi), dan menyapa penerima dengan layak.", 
+                o: ["Atas perhatiannya, kami haturkan terima kasih.", "Demikian agar maklum, terima kasih banyak atas bantuannya.", "Atas perhatian Bapak/Ibu, kami mengucapkan terima kasih.", "Sekian laporan ini, semoga Bapak/Ibu bisa maklum adanya.", "Atas kerja samanya kami ucapkan ribuan terima kasih."], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Dalam surat dinas, penggunaan kata 'kami' pada kalimat penutup merujuk kepada...", 
+                a: "Instansi atau lembaga pengirim surat", 
+                ex: "Surat dinas bersifat kolektif/lembaga, sehingga subjek yang digunakan adalah 'kami', bukan 'saya'.", 
+                o: ["Penerima surat", "Penulis surat secara pribadi", "Instansi atau lembaga pengirim surat", "Masyarakat umum", "Orang ketiga dalam surat"], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Perhatikan kalimat: 'Demikian agar menjadi periksa, atas perhatiannya diucapkan terima kasih.' Perbaikan yang tepat untuk kalimat tersebut adalah...", 
+                a: "Demikian permohonan ini kami sampaikan. Atas perhatian Bapak/Ibu, kami mengucapkan terima kasih.", 
+                ex: "Perbaikan ini menghilangkan kata-kata tidak baku dan memperbaiki referensi sapaan.", 
+                o: ["Demikian agar periksa, atas perhatiannya terima kasih.", "Demikian permohonan ini kami sampaikan. Atas perhatian Bapak/Ibu, kami mengucapkan terima kasih.", "Demikian surat ini dikirim, maklum adanya, terima kasih.", "Demikianlah adanya, moga Bapak/Ibu senang, terima kasih.", "Atas perhatiannya diucapkan terima kasih banyak."], 
+                lvl: "L3" 
+            }
+        ]
+    },
+    {
+        materi: "Isi Surat Balasan Dinas",
+        penjelasan: "Surat balasan harus merujuk pada nomor dan perihal surat yang diterima sebelumnya untuk menjaga keterkaitan informasi.",
+        soal: [
+            { 
+                q: "Bacalah ilustrasi berikut!\n\nSekolah menerima surat permohonan izin penggunaan lapangan dari klub sepak bola lokal. Pihak sekolah setuju dengan permohonan tersebut.\n\nKalimat yang tepat untuk mengawali isi surat balasan tersebut adalah...", 
+                a: "Membalas surat Saudara nomor 12/SK/III/2026 perihal izin penggunaan lapangan, dengan ini kami sampaikan bahwa kami tidak keberatan.", 
+                ex: "Surat balasan yang baik harus mencantumkan referensi surat yang dibalas agar jelas konteksnya.", 
+                o: ["Kami sudah membaca surat Anda dan kami setuju lapangan dipakai.", "Membalas surat Saudara nomor 12/SK/III/2026 perihal izin penggunaan lapangan, dengan ini kami sampaikan bahwa kami tidak keberatan.", "Silakan pakai lapangan kami sesuai dengan surat yang Anda kirim kemarin.", "Dengan ini kami izinkan saudara menggunakan lapangan sekolah kami.", "Surat Saudara sudah kami terima dan akan kami pelajari lebih lanjut."], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Dalam membalas surat dinas yang berisi undangan, informasi yang wajib ada dalam isi balasan adalah...", 
+                a: "Pernyataan kesediaan atau ketidakhadiran beserta alasannya", 
+                ex: "Kepastian kehadiran sangat penting bagi penyelenggara acara untuk urusan logistik.", 
+                o: ["Daftar menu makanan yang diminta", "Pernyataan kesediaan atau ketidakhadiran beserta alasannya", "Rincian biaya perjalanan", "Nama-nama seluruh anggota organisasi", "Sejarah singkat instansi pengirim"], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Kalimat balasan yang sopan untuk menolak sebuah permohonan kerja sama karena agenda yang padat adalah...", 
+                a: "Sehubungan dengan padatnya agenda sekolah, dengan sangat menyesal kami belum dapat memenuhi permohonan kerja sama tersebut.", 
+                ex: "Penolakan dalam surat dinas harus tetap menggunakan bahasa yang santun dan memberikan alasan yang rasional.", 
+                o: ["Kami tidak bisa bekerja sama karena kami sedang sangat sibuk.", "Mohon maaf, permohonan Anda kami tolak karena tidak penting.", "Sehubungan dengan padatnya agenda sekolah, dengan sangat menyesal kami belum dapat memenuhi permohonan kerja sama tersebut.", "Lupakan saja niat kerja sama tersebut karena kami tidak tertarik.", "Mungkin di lain waktu saja Anda mengirim surat lagi kepada kami."], 
+                lvl: "L3" 
+            }
+        ]
+    },
+    {
+        materi: "Kalimat Pendapat dan Opini dalam Teks Artikel",
+        penjelasan: "Pendapat dalam artikel berupa tesis atau gagasan utama penulis, sedangkan opini adalah detail pandangan yang mendukung pendapat tersebut.",
+        soal: [
+            { 
+                q: "Bacalah teks artikel berikut!\n\nPendidikan karakter harus menjadi fondasi utama dalam kurikulum sekolah di era digital. Tanpa karakter yang kuat, kecerdasan intelektual siswa justru bisa disalahgunakan untuk hal-hal negatif di dunia maya. Menurut saya, sekolah bukan hanya tempat mentransfer ilmu, tetapi juga tempat membentuk integritas. Sebaiknya, jam pelajaran praktik karakter diperbanyak daripada sekadar teori di kelas.\n\nKalimat pendapat (tesis) penulis dalam kutipan artikel tersebut adalah...", 
+                a: "Pendidikan karakter harus menjadi fondasi utama dalam kurikulum sekolah di era digital.", 
+                ex: "Kalimat pertama merupakan gagasan utama atau pendapat inti yang ingin disampaikan penulis.", 
+                o: ["Kecerdasan intelektual siswa bisa disalahgunakan.", "Sekolah adalah tempat mentransfer ilmu pengetahuan.", "Pendidikan karakter harus menjadi fondasi utama dalam kurikulum sekolah di era digital.", "Jam pelajaran teori di kelas sudah terlalu banyak.", "Siswa sering bermain di dunia maya tanpa pengawasan."], 
+                lvl: "L2" 
+            },
+            { 
+                q: "Berdasarkan teks artikel di atas, kalimat yang mengandung opini berupa saran penulis ditunjukkan oleh kalimat...", 
+                a: "Sebaiknya, jam pelajaran praktik karakter diperbanyak daripada sekadar teori di kelas.", 
+                ex: "Kata 'sebaiknya' menandakan bahwa kalimat tersebut adalah sebuah saran atau rekomendasi.", 
+                o: ["Pendidikan karakter adalah fondasi utama.", "Integritas siswa harus dibentuk sejak dini.", "Sebaiknya, jam pelajaran praktik karakter diperbanyak daripada sekadar teori di kelas.", "Dunia maya sangat berbahaya bagi siswa.", "Ilmu pengetahuan adalah kunci masa depan."], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Manakah perbedaan mendasar antara kalimat fakta dan kalimat opini dalam sebuah artikel?", 
+                a: "Fakta bersifat objektif dan dapat dibuktikan, sedangkan opini bersifat subjektif dan situasional", 
+                ex: "Fakta didasarkan pada data nyata, sementara opini didasarkan pada pemikiran atau perasaan seseorang.", 
+                o: ["Fakta selalu benar, opini selalu salah", "Fakta bersifat objektif dan dapat dibuktikan, sedangkan opini bersifat subjektif dan situasional", "Fakta hanya ada di koran, opini hanya ada di media sosial", "Fakta menggunakan bahasa puitis, opini menggunakan bahasa teknis", "Tidak ada perbedaan antara keduanya"], 
+                lvl: "L2" 
+            }
+        ]
+    },
+    {
+        materi: "Keberpihakan Penulis dalam Teks Artikel",
+        penjelasan: "Keberpihakan penulis menunjukkan posisi atau dukungan penulis terhadap salah satu pihak atau isu yang sedang dibahas.",
+        soal: [
+            { 
+                q: "Bacalah teks berikut!\n\nKenaikan harga pupuk nonsubsidi sangat memukul kehidupan para petani kecil. Di tengah cuaca yang tidak menentu, mereka harus menanggung beban biaya produksi yang melonjak dua kali lipat. Pemerintah seharusnya memberikan subsidi tambahan atau setidaknya menetapkan harga eceran tertinggi yang terjangkau agar nasib petani tidak semakin terpuruk.\n\nDalam teks artikel tersebut, penulis berpihak kepada...", 
+                a: "Petani kecil", 
+                ex: "Penulis menunjukkan empati dan memberikan saran solusi yang menguntungkan bagi nasib petani kecil.", 
+                o: ["Pemerintah", "Produsen pupuk", "Petani kecil", "Pedagang pasar", "Distributor nonsubsidi"], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Bacalah teks berikut!\n\nPenggunaan gawai pada anak usia dini memang memberikan akses ilmu pengetahuan yang luas. Namun, radiasi dan konten yang tidak tersaring jauh lebih berbahaya bagi perkembangan saraf mereka. Orang tua wajib membatasi waktu layar demi masa depan kesehatan mental anak-anak.\n\nKeberpihakan penulis dalam kutipan teks tersebut ditujukan untuk...", 
+                a: "Kesehatan dan keselamatan anak", 
+                ex: "Fokus penulis adalah pada perlindungan anak dari bahaya gawai.", 
+                o: ["Perusahaan teknologi gawai", "Kesehatan dan keselamatan anak", "Penyedia konten pendidikan", "Para ilmuwan saraf", "Kebutuhan orang tua yang sibuk"], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Untuk mengetahui keberpihakan penulis dalam sebuah artikel, pembaca harus memperhatikan...", 
+                a: "Arah argumen dan solusi yang ditawarkan penulis", 
+                ex: "Pihak yang dibela atau diberikan solusi oleh penulis menunjukkan ke mana arah keberpihakannya.", 
+                o: ["Jumlah kata yang digunakan", "Nama penulis artikel", "Arah argumen dan solusi yang ditawarkan penulis", "Jumlah iklan di sekitar artikel", "Waktu artikel tersebut dipublikasikan"], 
+                lvl: "L3" 
+            }
+        ]
+    },
+    {
+        materi: "Informasi Tepat dalam Teks Artikel",
+        penjelasan: "Menemukan informasi tepat berarti memahami rincian data atau pesan yang disampaikan penulis tanpa adanya penafsiran yang salah.",
+        soal: [
+            { 
+                q: "Bacalah teks berikut!\n\nProgram magang industri bagi siswa SMK kini wajib dilaksanakan minimal selama enam bulan. Hal ini dilakukan agar siswa memiliki waktu yang cukup untuk beradaptasi dengan budaya kerja nyata dan menguasai kompetensi teknis yang dibutuhkan perusahaan.\n\nInformasi yang tepat sesuai teks di atas adalah...", 
+                a: "Durasi minimal magang bagi siswa SMK adalah enam bulan.", 
+                ex: "Teks secara eksplisit menyebutkan kewajiban magang minimal selama enam bulan.", 
+                o: ["Siswa SMK tidak perlu lagi belajar di kelas.", "Perusahaan wajib membayar gaji tinggi kepada peserta magang.", "Durasi minimal magang bagi siswa SMK adalah enam bulan.", "Budaya kerja hanya bisa dipelajari melalui teori.", "Siswa SMK bebas memilih waktu magang sesuka hati."], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Bacalah teks artikel berikut!\n\nHutan mangrove di Kepulauan Riau merupakan salah satu yang terluas di Indonesia. Selain menahan abrasi, mangrove juga menyerap karbon lima kali lebih banyak daripada hutan tropis biasa. Upaya rehabilitasi mangrove sedang digalakkan di daerah pesisir.\n\nManakah informasi yang benar mengenai keunggulan mangrove berdasarkan teks?", 
+                a: "Mangrove memiliki daya serap karbon yang jauh lebih tinggi dibanding hutan tropis biasa.", 
+                ex: "Teks menyebutkan daya serap karbonnya lima kali lebih banyak dibanding hutan tropis.", 
+                o: ["Mangrove adalah tumbuhan paling langka di Indonesia.", "Mangrove memiliki daya serap karbon yang jauh lebih tinggi dibanding hutan tropis biasa.", "Rehabilitasi mangrove tidak diperlukan lagi.", "Mangrove hanya bisa tumbuh di air tawar.", "Luas hutan tropis sama dengan luas hutan mangrove."], 
+                lvl: "L3" 
+            },
+            { 
+                q: "Langkah pertama yang paling efektif untuk menemukan informasi tersurat dalam sebuah artikel adalah...", 
+                a: "Membaca teks secara cermat dan teliti (scanning)", 
+                ex: "Membaca keseluruhan untuk menangkap detail adalah cara terbaik menemukan informasi eksplisit.", 
+                o: ["Membaca judulnya saja", "Melihat gambar atau ilustrasi artikel", "Membaca teks secara cermat dan teliti (scanning)", "Membaca komentar pembaca lain", "Menghitung jumlah paragraf"], 
+                lvl: "L3" 
+            }
+        ]
+    }
+];
+
+    let currentStep = 0;
+    let isStudyMode = true;
+    let score = 0;
+    let answered = false;
+    let currentSoalObj = null;
+    
+    // State untuk menyembunyikan MATERI (Default: Tampil)
+    let isStudyHidden = false;
+
+    function toggleStudyContent() {
+        isStudyHidden = !isStudyHidden;
+        applyStudyVisibility();
+    }
+
+    function applyStudyVisibility() {
+        const content = document.getElementById('study-content');
+        const btn = document.getElementById('study-toggle-btn');
+        if (isStudyHidden) {
+            content.style.display = 'none';
+            btn.innerText = 'Tampilkan Materi';
+        } else {
+            content.style.display = 'block';
+            btn.innerText = 'Sembunyikan Materi';
+        }
+    }
+
+    function shuffle(arr) { return arr.sort(() => Math.random() - 0.5); }
+
+    function initStep() {
+        isStudyMode = true;
+        answered = false;
+        document.getElementById('study-screen').style.display = 'block';
+        document.getElementById('quiz-screen').style.display = 'none';
+        document.getElementById('ex-box').style.display = 'none'; // Sembunyikan box pembahasan soal lama
+        document.getElementById('next-btn').style.visibility = 'hidden';
+
+        const data = bankSoal[currentStep % bankSoal.length];
+        document.getElementById('study-title').innerText = `Materi: ${data.materi}`;
+        document.getElementById('study-content').innerText = data.penjelasan;
+        document.getElementById('pos-info').innerText = `Nomor ${currentStep + 1} / 40`;
+        
+        currentSoalObj = data.soal[Math.floor(Math.random() * data.soal.length)];
+        
+        // Terapkan preferensi sembunyi materi
+        applyStudyVisibility();
+    }
+
+    function startQuestion() {
+        isStudyMode = false;
+        document.getElementById('study-screen').style.display = 'none';
+        document.getElementById('quiz-screen').style.display = 'block';
+        
+        document.getElementById('q-text').innerText = currentSoalObj.q;
+        document.getElementById('lvl-info').innerText = currentSoalObj.lvl;
+        
+        const options = shuffle([...currentSoalObj.o]);
+        const container = document.getElementById('opt-container');
+        container.innerHTML = '';
+        
+        options.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.className = 'option';
+            btn.innerText = opt;
+            btn.onclick = () => checkAnswer(btn, opt);
+            container.appendChild(btn);
+        });
+    }
+
+    function checkAnswer(btn, choice) {
+        if (answered) return;
+        answered = true;
+        
+        const correct = currentSoalObj.a;
+        const allBtns = document.querySelectorAll('.option');
+        
+        if (choice === correct) {
+            btn.classList.add('correct');
+            score++;
+        } else {
+            btn.classList.add('wrong');
+            allBtns.forEach(b => { if(b.innerText === correct) b.classList.add('correct'); });
+        }
+
+        allBtns.forEach(b => b.disabled = true);
+        
+        // Selalu tampilkan pembahasan soal setelah menjawab
+        document.getElementById('ex-text').innerText = currentSoalObj.ex;
+        document.getElementById('ex-box').style.display = 'block'; 
+        
+        document.getElementById('next-btn').style.visibility = 'visible';
+    }
+
+    function nextStep() {
+        currentStep++;
+        if (currentStep < 40) {
+            document.getElementById('progress-fill').style.width = `${(currentStep / 40) * 100}%`;
+            initStep();
+        } else {
+            showResult();
+        }
+    }
+
+    function showResult() {
+        document.getElementById('quiz-screen').style.display = 'none';
+        document.getElementById('study-screen').style.display = 'none';
+        const res = document.getElementById('result-screen');
+        res.style.display = 'block';
+        const finalVal = (score / 40) * 100;
+        document.getElementById('final-score').innerText = finalVal.toFixed(0);
+        
+        let comment = "Belajar lagi ya!";
+        if(finalVal >= 80) comment = "Luar biasa, Halberg! Kamu siap ujian.";
+        else if(finalVal >= 70) comment = "Bagus, sedikit lagi sempurna!";
+        document.getElementById('final-comment').innerText = comment;
+    }
+
+    initStep();
+</script>
+</body>
+</html>
